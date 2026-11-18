@@ -1,0 +1,41 @@
+@startuml
+left to right direction
+actor Administrador
+actor Técnico
+actor Vendedor
+actor Marketing
+actor Cliente
+
+rectangle "Sistema de Gestión INDEA" {
+  usecase "Iniciar sesión" as UC1
+  usecase "Gestionar clientes" as UC2
+  usecase "Buscar cliente por nombre o teléfono" as UC3
+  usecase "Registrar reparación" as UC4
+  usecase "Actualizar estado y diagnóstico" as UC5
+  usecase "Consultar por folio" as UC6
+  usecase "Consultar resumen del panel" as UC7
+  usecase "Cerrar sesión" as UC8
+}
+Administrador --> UC1
+Técnico --> UC1
+Vendedor --> UC1
+Marketing --> UC1
+Administrador --> UC2
+Técnico --> UC2
+Vendedor --> UC2
+Marketing --> UC2
+UC2 .> UC3 : <<include>>
+Administrador --> UC4
+Técnico --> UC4
+Administrador --> UC5
+Técnico --> UC5
+Cliente --> UC6
+Administrador --> UC7
+Técnico --> UC7
+Vendedor --> UC7
+Marketing --> UC7
+Administrador --> UC8
+Técnico --> UC8
+Vendedor --> UC8
+Marketing --> UC8
+@enduml

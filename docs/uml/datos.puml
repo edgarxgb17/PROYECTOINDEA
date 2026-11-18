@@ -1,0 +1,28 @@
+@startuml
+entity empleados
+entity usuarios
+entity clientes
+entity reparaciones
+entity historial_estado_reparacion
+entity refacciones
+entity reparacion_refaccion
+entity equipos
+entity compras
+entity ventas
+entity publicaciones
+empleados ||--o| usuarios
+clientes ||--o{ reparaciones
+empleados ||--o{ reparaciones
+reparaciones ||--o{ historial_estado_reparacion
+empleados ||--o{ historial_estado_reparacion
+reparaciones ||--o{ reparacion_refaccion
+refacciones ||--o{ reparacion_refaccion
+equipos ||--o| compras
+equipos ||--o| ventas
+equipos ||--o{ publicaciones
+clientes |o--o{ compras
+clientes ||--o{ ventas
+empleados ||--o{ compras
+empleados ||--o{ ventas
+empleados ||--o{ publicaciones
+@enduml
