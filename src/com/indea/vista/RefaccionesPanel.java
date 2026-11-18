@@ -2,6 +2,7 @@ package com.indea.vista;
 
 import com.indea.modelo.Rol;
 import com.indea.servicio.RefaccionService;
+import com.indea.servicio.ReportesPdfService;
 import com.indea.servicio.RefaccionService.Refaccion;
 import com.indea.util.Sesion;
 
@@ -43,6 +44,9 @@ final class RefaccionesPanel extends JPanel {
         JButton actualizar = new JButton("Actualizar");
         actualizar.addActionListener(e -> hacer(this::refrescar));
         acciones.add(actualizar);
+        JButton btnPdf = new JButton("PDF de refacciones");
+        btnPdf.addActionListener(e -> ExportarPdf.guardar(this,"INDEA-refacciones",ReportesPdfService::refacciones));
+        acciones.add(btnPdf);
         pie.add(acciones, BorderLayout.NORTH);
         pie.add(estado, BorderLayout.SOUTH);
         add(pie, BorderLayout.SOUTH);

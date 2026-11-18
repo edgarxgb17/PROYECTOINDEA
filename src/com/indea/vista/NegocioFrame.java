@@ -3,6 +3,7 @@ import com.indea.servicio.NegocioService;
 import com.indea.servicio.NegocioService.PersonaOperacion;
 import com.indea.servicio.NegocioService.ProveedorCompra;
 import com.indea.servicio.ProveedorService;
+import com.indea.servicio.ReportesPdfService;
 import com.indea.servicio.ClienteService;
 import com.indea.modelo.Cliente;
 import com.indea.util.Sesion;
@@ -54,7 +55,11 @@ public class NegocioFrame extends JPanel {
   }
  switch(vista){
  case "inventario":
-  boton("Filtrar",()->filtro=choose("Estado",new String[]{"","DISPONIBLE","VENDIDO","NO_DISPONIBLE_AUN"}));
+  boton("Filtrar",()->{
+   String elegido=choose("Estado",new String[]{"Todos","Disponibles","No disponibles aún","Vendidos"});
+   filtro=switch(elegido){case "Disponibles"->"DISPONIBLE";case "No disponibles aún"->"NO_DISPONIBLE_AUN";case "Vendidos"->"VENDIDO";default->"";};
+  });
+  boton("PDF de inventario",()->ExportarPdf.guardar(this,"INDEA-inventario",()->ReportesPdfService.inventario(filtro)));
   if (Sesion.getRol()==Rol.ADMINISTRADOR || Sesion.getRol()==Rol.VENDEDOR) {
    boton("Compra",this::compra);
    boton("Venta",this::venta);
@@ -64,7 +69,14 @@ public class NegocioFrame extends JPanel {
  case "empleados":boton("Nuevo",()->empleado(false));boton("Editar / desbloquear",()->empleado(true));break;
  case "publicaciones":boton("Nueva",()->pub(false));boton("Editar / desactivar",()->pub(true));break;
  case "historial":boton("Consultar cliente",()->filtro=String.valueOf(persona("Consultar historial",false).id()));break;
- case "reportes":boton("Día / semana / mes",()->{String p=choose("Periodo",new String[]{"Día","Semana","Mes"});LocalDate h=LocalDate.now();LocalDate d=p.equals("Día")?h:p.equals("Semana")?h.minusDays(h.getDayOfWeek().getValue()-1):h.withDayOfMonth(1);filtro=d+","+h;refresh();});break;
+ case "reportes":
+  boton("Periodo",this::elegirPeriodo);
+  boton("PDF de ganancias",()->{
+   LocalDate[] fechas=periodoReporte();
+   ExportarPdf.guardar(this,"INDEA-ganancias-"+fechas[0]+"-a-"+fechas[1],
+           ()->ReportesPdfService.ganancias(fechas[0],fechas[1]));
+  });
+  break;
  }boton("Actualizar",()->refresh());refresh();}
  private void boton(String t,Runnable r){JButton b=new JButton(t);botones.add(b);b.addActionListener(e->{try{r.run();refresh();}catch(Cancel x){}catch(RuntimeException x){Ui.manejar(this,x);}});}
  private static class Cancel extends RuntimeException{}
@@ -73,6 +85,33 @@ public class NegocioFrame extends JPanel {
  private String[] form(String title,String... labels){JPanel p=new JPanel(new GridLayout(0,2,5,5));JTextField[] f=new JTextField[labels.length];for(int i=0;i<f.length;i++){p.add(new JLabel(labels[i]));f[i]=labels[i].contains("Contraseña")?new JPasswordField():new JTextField(22);if(labels[i].equals("Cantidad de equipos"))f[i].setText("1");p.add(f[i]);}if(JOptionPane.showConfirmDialog(this,p,title,JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)throw new Cancel();String[] a=new String[f.length];for(int i=0;i<a.length;i++)a[i]=f[i].getText();return a;}
  private int id(){if(tabla.getSelectedRow()<0)throw new IllegalArgumentException("Selecciona una fila");return Integer.parseInt(tabla.getValueAt(tabla.getSelectedRow(),0).toString());}
  private void empleado(boolean edit){int id=edit?id():0;String[] a=form("Empleado","Nombre","Teléfono","Correo","Usuario","Contraseña (vacía conserva)");s.empleado(id,a[0],a[1],a[2],choose("Rol",new String[]{"ADMINISTRADOR","TECNICO","VENDEDOR","MARKETING"}),a[3],a[4],choose("Activo",new String[]{"Sí","No"}).equals("Sí"));}
+ private LocalDate[] periodoReporte() {
+  LocalDate hoy=LocalDate.now();
+  if(filtro.isBlank())return new LocalDate[]{hoy,hoy};
+  String[] fechas=filtro.split(",");
+  return new LocalDate[]{LocalDate.parse(fechas[0]),LocalDate.parse(fechas[1])};
+ }
+
+ private void elegirPeriodo() {
+  String elegido=choose("Periodo",new String[]{"Hoy","Semana actual","Mes actual","Elegir fechas"});
+  LocalDate fin=LocalDate.now(),inicio=fin;
+  if ("Semana actual".equals(elegido)) inicio=fin.minusDays(fin.getDayOfWeek().getValue()-1);
+  else if ("Mes actual".equals(elegido)) inicio=fin.withDayOfMonth(1);
+  else if ("Elegir fechas".equals(elegido)) {
+   LocalDate[] anterior=periodoReporte();
+   JTextField desde=new JTextField(anterior[0].toString(),12),hasta=new JTextField(anterior[1].toString(),12);
+   JPanel campos=Ui.formulario();
+   Ui.fila(campos,0,"Desde (AAAA-MM-DD)",desde);
+   Ui.fila(campos,1,"Hasta (AAAA-MM-DD)",hasta);
+   if (JOptionPane.showConfirmDialog(this,campos,"Elegir periodo",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) throw new Cancel();
+   try { inicio=LocalDate.parse(desde.getText().strip()); fin=LocalDate.parse(hasta.getText().strip()); }
+   catch (java.time.format.DateTimeParseException e) { throw new IllegalArgumentException("Escribe fechas como AAAA-MM-DD."); }
+  }
+  if (fin.isBefore(inicio)||inicio.getYear()<1000||fin.getYear()>9998)
+   throw new IllegalArgumentException("Revisa que el periodo sea válido y que la fecha final no sea anterior a la inicial.");
+  filtro=inicio+","+fin;
+ }
+
  private void compra() {
   String[] a=form("Compra de equipos","Tipo","Marca","Modelo","Condición","Precio de venta por equipo","Costo de compra por equipo","Cantidad de equipos");
   int cantidad=NegocioService.cantidadEquipos(a[6]);

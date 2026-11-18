@@ -9,6 +9,7 @@ import com.indea.modelo.EstadoReparacion;
 import com.indea.modelo.Reparacion;
 import com.indea.modelo.Rol;
 import com.indea.servicio.RefaccionService;
+import com.indea.servicio.ReportesPdfService;
 import com.indea.servicio.RefaccionService.Refaccion;
 import com.indea.util.Sesion;
 
@@ -58,7 +59,7 @@ public class ReparacionesFrame extends JPanel {
 
     private final JTextField txtBuscar = new JTextField(18);
     private final DefaultTableModel modelo = Ui.modeloTabla("Folio", "Cliente", "Equipo", "Estado", "Ingreso");
-    private final JTable tabla = new JTable(modelo);
+    private final TablaFolios tabla = new TablaFolios(modelo);
     private final List<Reparacion> mostradas = new ArrayList<>();
     private final JTextField txtFolioCopiable = new JTextField(15);
     private final JButton btnCopiarFolio = new JButton("Copiar folio");
@@ -73,6 +74,7 @@ public class ReparacionesFrame extends JPanel {
     private final RefaccionService servicioRefacciones = new RefaccionService();
     private boolean folioEntregado;
     private String folioSeleccionado;
+    private boolean busquedaAplicada;
 
     public ReparacionesFrame() {
         
@@ -127,7 +129,7 @@ public class ReparacionesFrame extends JPanel {
         refrescarTabla();
         if (anterior==null) return;
         for (int i=0;i<mostradas.size();i++) {
-            if (anterior.equals(mostradas.get(i).getFolio())) { tabla.setRowSelectionInterval(i,i); break; }
+            if (anterior.equals(mostradas.get(i).getFolio())) { tabla.seleccionarFolio(i); break; }
         }
     }
 
@@ -188,6 +190,10 @@ public class ReparacionesFrame extends JPanel {
         busqueda.add(txtBuscar);
         busqueda.add(btnBuscar);
         busqueda.add(btnTodas);
+        JButton btnPdf = new JButton("PDF de reparaciones");
+        btnPdf.addActionListener(e -> ExportarPdf.guardar(this,"INDEA-reparaciones",
+                () -> ReportesPdfService.reparaciones(List.copyOf(mostradas),busquedaAplicada)));
+        busqueda.add(btnPdf);
 
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tabla.setFillsViewportHeight(true);
@@ -207,15 +213,27 @@ public class ReparacionesFrame extends JPanel {
         txtFolioCopiable.setToolTipText("Selecciona el texto o usa Copiar folio.");
         btnCopiarFolio.setEnabled(false);
         btnCopiarFolio.addActionListener(e -> copiarFolio());
-        JPanel casilla = new JPanel(new BorderLayout(6,0));
-        casilla.add(txtFolioCopiable,BorderLayout.CENTER);
-        casilla.add(btnCopiarFolio,BorderLayout.EAST);
-        Ui.fila(izquierda,0,"Folio",casilla);
-        Ui.fila(izquierda,1,"Cliente",lblClienteFolio);
-        Ui.fila(izquierda,2,"Estado",cmbEstado);
-        Ui.fila(izquierda,3,"Costo del servicio",txtCosto);
-        Ui.fila(izquierda,4,"",chkPagado);
-        Ui.fila(izquierda,5,"Diagnóstico",new JScrollPane(txtDiagnostico));
+        txtFolioCopiable.setFont(new Font(Font.MONOSPACED,Font.BOLD,15));
+        txtFolioCopiable.getAccessibleContext().setAccessibleName("Folio seleccionado");
+        JPanel casilla = new JPanel(new FlowLayout(FlowLayout.LEFT,8,5));
+        casilla.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(185,208,233),1,true),
+                BorderFactory.createEmptyBorder(1,6,1,6)));
+        casilla.setBackground(new Color(237,245,253));
+        JLabel etiqueta = new JLabel("Folio seleccionado");
+        etiqueta.setForeground(Ui.AZUL);
+        etiqueta.setFont(etiqueta.getFont().deriveFont(Font.BOLD));
+        etiqueta.setLabelFor(txtFolioCopiable);
+        casilla.add(etiqueta);
+        casilla.add(txtFolioCopiable);
+        casilla.add(btnCopiarFolio);
+        casilla.add(new JLabel("Haz clic en una celda de la columna Folio."));
+
+        Ui.fila(izquierda,0,"Cliente",lblClienteFolio);
+        Ui.fila(izquierda,1,"Estado",cmbEstado);
+        Ui.fila(izquierda,2,"Costo del servicio",txtCosto);
+        Ui.fila(izquierda,3,"",chkPagado);
+        Ui.fila(izquierda,4,"Diagnóstico",new JScrollPane(txtDiagnostico));
 
         JPanel derecha = new JPanel(new BorderLayout());
         derecha.setBorder(BorderFactory.createTitledBorder("Historial de estados"));
@@ -234,7 +252,10 @@ public class ReparacionesFrame extends JPanel {
 
         JPanel panel = new JPanel(new BorderLayout(0, 6));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        panel.add(busqueda, BorderLayout.NORTH);
+        JPanel cabecera = new JPanel(new BorderLayout(0,5));
+        cabecera.add(busqueda,BorderLayout.NORTH);
+        cabecera.add(casilla,BorderLayout.CENTER);
+        panel.add(cabecera,BorderLayout.NORTH);
         panel.add(new JScrollPane(tabla), BorderLayout.CENTER);
         panel.add(sur, BorderLayout.SOUTH);
 
@@ -368,7 +389,9 @@ public class ReparacionesFrame extends JPanel {
 
     private void refrescarTabla() {
         try {
-            List<Reparacion> lista = controlador.listar(txtBuscar.getText());
+            String filtro = txtBuscar.getText();
+            List<Reparacion> lista = controlador.listar(filtro);
+            busquedaAplicada = !filtro.isBlank();
             modelo.setRowCount(0);
             mostradas.clear();
             for (Reparacion r : lista) {
@@ -490,7 +513,7 @@ public class ReparacionesFrame extends JPanel {
             int fila = tabla.getSelectedRow();
             refrescarTabla();
             if (fila >= 0 && fila < tabla.getRowCount()) {
-                tabla.setRowSelectionInterval(fila, fila);
+                tabla.seleccionarFolio(fila);
             }
             cargarSeleccion();
         } catch (RuntimeException ex) {

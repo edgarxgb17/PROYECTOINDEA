@@ -32,6 +32,19 @@ Las ventanas se implementan con Swing `JFrame`, son redimensionables y usan comp
 - En **Publicaciones → Nueva**, selecciona el equipo por marca, modelo o estado. Para editar una publicación existente, selecciona su fila y conserva el equipo asociado.
 - En **Historial**, busca a la persona para consultar sus compras, ventas y reparaciones.
 
+## Folios y reportes PDF
+
+En **Reparaciones → Seguimiento**, haz clic en una celda de la columna **Folio**. Solo esa celda se resalta. El recuadro **Folio seleccionado** muestra el código por separado; puedes seleccionarlo con el cursor o usar **Copiar folio**.
+
+| Reporte | Dónde abrirlo | Qué incluye |
+|---|---|---|
+| Ganancias | **Reportes → PDF de ganancias** (administrador) | Selecciona un periodo. Incluye ventas, reparaciones cobradas y margen calculado con los costos registrados. No es utilidad neta. |
+| Inventario | **Inventario → Equipos → PDF de inventario** | Lista y conteo de equipos según el filtro de estado. |
+| Reparaciones | **Reparaciones → Seguimiento → PDF de reparaciones** | Folios y estados de la búsqueda aplicada, o de todas las reparaciones. No imprime información de contacto de clientes. |
+| Refacciones | **Inventario → Refacciones → PDF de refacciones** | Existencias y costos, con las piezas agotadas primero. |
+
+Cada botón abre **Guardar reporte PDF**. Elige una carpeta. Después puedes abrir el PDF y usar **Ctrl + P** para imprimirlo. No hace falta instalar otro JAR. Esta actualización no cambia las tablas ni la configuración de MySQL.
+
 ## Refacciones para reparaciones
 
 1. Como **Administrador**, abre **Inventario → Refacciones → Nueva refacción**. Escribe el nombre, el costo por pieza y las existencias iniciales. Ejemplo: Pantalla 14 pulgadas, costo `650.00`, existencias `3`.
