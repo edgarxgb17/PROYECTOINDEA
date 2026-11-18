@@ -102,12 +102,26 @@ CREATE TABLE equipos (
 ) ENGINE=InnoDB;
 
 
+CREATE TABLE proveedores (
+    id_proveedor INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) COLLATE utf8mb4_unicode_ci NOT NULL UNIQUE,
+    contacto VARCHAR(100) NULL,
+    telefono VARCHAR(30) NULL,
+    correo VARCHAR(100) NULL,
+    direccion VARCHAR(200) NULL,
+    fecha_alta DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE compras (
     id_compra      INT AUTO_INCREMENT PRIMARY KEY,
     id_equipo      INT           NOT NULL UNIQUE,
     origen         ENUM('CLIENTE','PROVEEDOR') NOT NULL,
     id_cliente     INT           NULL,
     proveedor      VARCHAR(100)  NULL,
+    id_proveedor   INT           NULL,
+    lote_compra    CHAR(36)      NULL,
+    KEY ix_compras_proveedor_lote (id_proveedor, lote_compra),
+    CONSTRAINT fk_compras_proveedor FOREIGN KEY (id_proveedor) REFERENCES proveedores (id_proveedor),
     id_empleado    INT           NOT NULL,
     precio_compra  DECIMAL(10,2) NOT NULL,
     fecha_compra   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,

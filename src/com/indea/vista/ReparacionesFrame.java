@@ -19,15 +19,20 @@ import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTabbedPane;
+import javax.swing.ButtonGroup;
+import javax.swing.JToggleButton;
+import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.Font;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -55,7 +60,9 @@ public class ReparacionesFrame extends JPanel {
     private final DefaultTableModel modelo = Ui.modeloTabla("Folio", "Cliente", "Equipo", "Estado", "Ingreso");
     private final JTable tabla = new JTable(modelo);
     private final List<Reparacion> mostradas = new ArrayList<>();
-    private final JLabel lblFolio = new JLabel("Selecciona una reparación de la tabla");
+    private final JTextField txtFolioCopiable = new JTextField(15);
+    private final JButton btnCopiarFolio = new JButton("Copiar folio");
+    private final JLabel lblClienteFolio = new JLabel("Selecciona una reparación de la tabla");
     private final JComboBox<EstadoReparacion> cmbEstado = new JComboBox<>(EstadoReparacion.values());
     private final JTextField txtCosto = new JTextField(10);
     private final JCheckBox chkPagado = new JCheckBox("Servicio pagado");
@@ -73,10 +80,7 @@ public class ReparacionesFrame extends JPanel {
         setLayout(new BorderLayout());
         add(Ui.encabezado("Reparaciones", "Recibir equipos, generar folio y dar seguimiento al servicio"), BorderLayout.NORTH);
 
-        JTabbedPane pestanas = new JTabbedPane();
-        pestanas.addTab("Nueva reparación", construirNueva());
-        pestanas.addTab("Seguimiento", construirSeguimiento());
-        add(pestanas, BorderLayout.CENTER);
+        add(construirNavegacion(), BorderLayout.CENTER);
 
         cargarTecnicos();
         
@@ -86,6 +90,52 @@ public class ReparacionesFrame extends JPanel {
         refrescarTabla();
         habilitarEdicion(false);
         btnRefacciones.setEnabled(false);
+    }
+
+    private JPanel construirNavegacion() {
+        CardLayout cartas = new CardLayout();
+        JPanel contenido = new JPanel(cartas);
+        contenido.add(construirNueva(),"nueva");
+        contenido.add(construirSeguimiento(),"seguimiento");
+        JPanel barra = new JPanel(new FlowLayout(FlowLayout.LEFT,8,7));
+        barra.setBackground(new Color(239,244,250));
+        ButtonGroup grupo = new ButtonGroup();
+        JToggleButton nueva = new JToggleButton("Nueva reparación",true);
+        JToggleButton seguimiento = new JToggleButton("Seguimiento");
+        grupo.add(nueva); grupo.add(seguimiento);
+        for (JToggleButton b : new JToggleButton[]{nueva,seguimiento}) {
+            b.setUI(new javax.swing.plaf.basic.BasicToggleButtonUI());
+            b.setOpaque(true);
+            b.setContentAreaFilled(true);
+            b.setBorderPainted(true);
+            b.setFocusPainted(true);
+            b.setFont(b.getFont().deriveFont(Font.BOLD,14f));
+            b.addItemListener(e -> pintarBoton(b));
+            pintarBoton(b);
+            barra.add(b);
+        }
+        nueva.addActionListener(e -> cartas.show(contenido,"nueva"));
+        seguimiento.addActionListener(e -> { cartas.show(contenido,"seguimiento"); refrescarSinPerderFolio(); });
+        JPanel raiz = new JPanel(new BorderLayout());
+        raiz.add(barra,BorderLayout.NORTH);
+        raiz.add(contenido,BorderLayout.CENTER);
+        return raiz;
+    }
+
+    private void refrescarSinPerderFolio() {
+        String anterior = folioSeleccionado;
+        refrescarTabla();
+        if (anterior==null) return;
+        for (int i=0;i<mostradas.size();i++) {
+            if (anterior.equals(mostradas.get(i).getFolio())) { tabla.setRowSelectionInterval(i,i); break; }
+        }
+    }
+
+    private static void pintarBoton(JToggleButton boton) {
+        boton.setForeground(boton.isSelected()?Color.WHITE:Ui.AZUL);
+        boton.setBackground(boton.isSelected()?Ui.AZUL:Color.WHITE);
+        boton.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Ui.AZUL,1,true),
+                BorderFactory.createEmptyBorder(7,15,7,15)));
     }
 
     private JPanel construirNueva() {
@@ -141,6 +191,9 @@ public class ReparacionesFrame extends JPanel {
 
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tabla.setFillsViewportHeight(true);
+        tabla.setSelectionBackground(new Color(217,232,250));
+        tabla.setSelectionForeground(new Color(23,41,66));
+        tabla.setRowHeight(Math.max(22,tabla.getRowHeight()));
 
         txtDiagnostico.setLineWrap(true);
         txtDiagnostico.setWrapStyleWord(true);
@@ -149,11 +202,20 @@ public class ReparacionesFrame extends JPanel {
 
         JPanel izquierda = Ui.formulario();
         izquierda.setBorder(BorderFactory.createTitledBorder("Actualizar reparación"));
-        Ui.fila(izquierda, 0, "Folio", lblFolio);
-        Ui.fila(izquierda, 1, "Estado", cmbEstado);
-        Ui.fila(izquierda, 2, "Costo del servicio", txtCosto);
-        Ui.fila(izquierda, 3, "", chkPagado);
-        Ui.fila(izquierda, 4, "Diagnóstico", new JScrollPane(txtDiagnostico));
+        txtFolioCopiable.setEditable(false);
+        txtFolioCopiable.setBackground(Color.WHITE);
+        txtFolioCopiable.setToolTipText("Selecciona el texto o usa Copiar folio.");
+        btnCopiarFolio.setEnabled(false);
+        btnCopiarFolio.addActionListener(e -> copiarFolio());
+        JPanel casilla = new JPanel(new BorderLayout(6,0));
+        casilla.add(txtFolioCopiable,BorderLayout.CENTER);
+        casilla.add(btnCopiarFolio,BorderLayout.EAST);
+        Ui.fila(izquierda,0,"Folio",casilla);
+        Ui.fila(izquierda,1,"Cliente",lblClienteFolio);
+        Ui.fila(izquierda,2,"Estado",cmbEstado);
+        Ui.fila(izquierda,3,"Costo del servicio",txtCosto);
+        Ui.fila(izquierda,4,"",chkPagado);
+        Ui.fila(izquierda,5,"Diagnóstico",new JScrollPane(txtDiagnostico));
 
         JPanel derecha = new JPanel(new BorderLayout());
         derecha.setBorder(BorderFactory.createTitledBorder("Historial de estados"));
@@ -323,8 +385,10 @@ public class ReparacionesFrame extends JPanel {
         int fila = tabla.getSelectedRow();
         folioSeleccionado = null;
         btnRefacciones.setEnabled(false);
+        txtFolioCopiable.setText("");
+        btnCopiarFolio.setEnabled(false);
+        lblClienteFolio.setText("Selecciona una reparación de la tabla");
         if (fila < 0 || fila >= mostradas.size()) {
-            lblFolio.setText("Selecciona una reparación de la tabla");
             habilitarEdicion(false);
             return;
         }
@@ -333,7 +397,9 @@ public class ReparacionesFrame extends JPanel {
             folioSeleccionado = r.getFolio();
             folioEntregado = r.getEstado() == EstadoReparacion.ENTREGADO;
             btnRefacciones.setEnabled(true);
-            lblFolio.setText(r.getFolio() + " - " + r.getCliente().getNombre());
+            txtFolioCopiable.setText(r.getFolio());
+            btnCopiarFolio.setEnabled(true);
+            lblClienteFolio.setText(r.getCliente().getNombre());
             cmbEstado.setSelectedItem(r.getEstado());
             txtCosto.setText(r.getCostoServicio().toPlainString());
             chkPagado.setSelected(r.isPagado());
@@ -348,6 +414,18 @@ public class ReparacionesFrame extends JPanel {
             habilitarEdicion(r.getEstado() != EstadoReparacion.ENTREGADO);
         } catch (RuntimeException ex) {
             Ui.manejar(this, ex);
+        }
+    }
+
+    private void copiarFolio() {
+        if (folioSeleccionado==null) return;
+        try {
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(folioSeleccionado),null);
+            Ui.info(this,"Folio copiado: "+folioSeleccionado);
+        } catch (IllegalStateException e) {
+            txtFolioCopiable.requestFocusInWindow();
+            txtFolioCopiable.selectAll();
+            Ui.aviso(this,"El portapapeles no está disponible. Puedes copiar el folio seleccionándolo.");
         }
     }
 

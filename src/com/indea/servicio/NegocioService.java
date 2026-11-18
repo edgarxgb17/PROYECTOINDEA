@@ -67,21 +67,52 @@ public class NegocioService {
   }
  }
 
- public void compra(String tipo, String marca, String modelo, String condicion, String precio,
-                    String costo, String origen, PersonaOperacion persona, String proveedor, String estado) {
-  permiso(Rol.ADMINISTRADOR, Rol.VENDEDOR);
-  if (!"CLIENTE".equals(origen) && !"PROVEEDOR".equals(origen)) {
-   throw new IllegalArgumentException("Selecciona el origen de la compra.");
+ public record ProveedorCompra(Integer id, ProveedorService.Ficha nueva) {
+  public ProveedorCompra {
+   if ((id==null)==(nueva==null) || (id!=null && id<=0)) {
+    throw new IllegalArgumentException("Selecciona o registra un proveedor.");
+   }
   }
-  String tipoEquipo = required(tipo), condicionEquipo = required(condicion);
-  BigDecimal precioVenta = money(precio), precioCompra = money(costo);
-  tx(c -> {
-   Integer cliente = "CLIENTE".equals(origen) ? resolverPersona(c, persona) : null;
-   String proveedorCompra = "PROVEEDOR".equals(origen) ? required(proveedor) : null;
-   int id = insert(c, "INSERT INTO equipos(tipo,marca,modelo,condicion,precio_venta,estado) VALUES(?,?,?,?,?,?)",
-           tipoEquipo, marca, modelo, condicionEquipo, precioVenta, estado);
-   exec(c, "INSERT INTO compras(id_equipo,origen,id_cliente,proveedor,id_empleado,precio_compra) VALUES(?,?,?,?,?,?)",
-           id, origen, cliente, proveedorCompra, actor(), precioCompra);
+ }
+
+ public static int cantidadEquipos(String valor) {
+  try {
+   int n=Integer.parseInt(valor==null?"":valor.strip());
+   if (n>0) return n;
+  } catch (NumberFormatException ignored) {}
+  throw new IllegalArgumentException("La cantidad de equipos debe ser un número entero mayor que cero.");
+ }
+
+ public void compra(String tipo,String marca,String modelo,String condicion,String precio,String costo,
+                    PersonaOperacion persona,ProveedorCompra proveedor,String estado,int cantidad) {
+  permiso(Rol.ADMINISTRADOR,Rol.VENDEDOR);
+  if ((persona==null)==(proveedor==null)) throw new IllegalArgumentException("Selecciona el origen de la compra.");
+  if (cantidad<=0) throw new IllegalArgumentException("La cantidad debe ser mayor que cero.");
+  String tipoEquipo=required(tipo), condicionEquipo=required(condicion);
+  BigDecimal precioVenta=money(precio), precioCompra=money(costo);
+  String lote=UUID.randomUUID().toString();
+  tx(c->{
+   Integer cliente=persona!=null?resolverPersona(c,persona):null;
+   Integer proveedorId=null;
+   String proveedorNombre=null;
+   if (proveedor!=null) {
+    proveedorId=proveedor.id()!=null?proveedor.id():ProveedorService.insertar(c,proveedor.nueva());
+    proveedorNombre=ProveedorService.nombreActual(c,proveedorId);
+   }
+   try (PreparedStatement altaEquipo=c.prepareStatement(
+       "INSERT INTO equipos(tipo,marca,modelo,condicion,precio_venta,estado) VALUES(?,?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS);
+        PreparedStatement altaCompra=c.prepareStatement(
+       "INSERT INTO compras(id_equipo,origen,id_cliente,proveedor,id_empleado,precio_compra,id_proveedor,lote_compra) VALUES(?,?,?,?,?,?,?,?)")) {
+    bind(altaEquipo,tipoEquipo,marca,modelo,condicionEquipo,precioVenta,estado);
+    for (int i=0;i<cantidad;i++) {
+     altaEquipo.executeUpdate();
+     try (ResultSet ids=altaEquipo.getGeneratedKeys()) {
+      if (!ids.next()) throw new SQLException("No se generó el identificador del equipo.");
+      bind(altaCompra,ids.getInt(1),persona!=null?"CLIENTE":"PROVEEDOR",cliente,proveedorNombre,actor(),precioCompra,proveedorId,lote);
+     }
+     altaCompra.executeUpdate();
+    }
+   }
   });
  }
 

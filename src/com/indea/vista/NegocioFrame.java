@@ -1,6 +1,8 @@
 package com.indea.vista;
 import com.indea.servicio.NegocioService;
 import com.indea.servicio.NegocioService.PersonaOperacion;
+import com.indea.servicio.NegocioService.ProveedorCompra;
+import com.indea.servicio.ProveedorService;
 import com.indea.servicio.ClienteService;
 import com.indea.modelo.Cliente;
 import com.indea.util.Sesion;
@@ -22,18 +24,26 @@ public class NegocioFrame extends JPanel {
  private String filtro="";
  private JTabbedPane pestanasInventario;
  private RefaccionesPanel refacciones;
+ private ProveedoresPanel proveedores;
  public NegocioFrame(String vista){
   this.vista=vista;
   setLayout(new BorderLayout());
   add(Ui.encabezado(vista.toUpperCase(java.util.Locale.ROOT),"Sistema de gestión INDEA"),BorderLayout.NORTH);
-  if ("inventario".equals(vista) && (Sesion.getRol()==Rol.ADMINISTRADOR || Sesion.getRol()==Rol.TECNICO)) {
+  Rol rol=Sesion.getRol();
+  if ("inventario".equals(vista) && (rol==Rol.ADMINISTRADOR || rol==Rol.TECNICO || rol==Rol.VENDEDOR)) {
    JPanel equipos=new JPanel(new BorderLayout());
    equipos.add(new JScrollPane(tabla),BorderLayout.CENTER);
    equipos.add(botones,BorderLayout.SOUTH);
    pestanasInventario=new JTabbedPane();
-   refacciones=new RefaccionesPanel();
    pestanasInventario.addTab("Equipos",equipos);
-   pestanasInventario.addTab("Refacciones",refacciones);
+   if (rol==Rol.ADMINISTRADOR || rol==Rol.TECNICO) {
+    refacciones=new RefaccionesPanel();
+    pestanasInventario.addTab("Refacciones",refacciones);
+   }
+   if (rol==Rol.ADMINISTRADOR || rol==Rol.VENDEDOR) {
+    proveedores=new ProveedoresPanel();
+    pestanasInventario.addTab("Proveedores",proveedores);
+   }
    pestanasInventario.addChangeListener(e->{
     try { refresh(); } catch(RuntimeException ex) { Ui.manejar(this,ex); }
    });
@@ -60,16 +70,35 @@ public class NegocioFrame extends JPanel {
  private static class Cancel extends RuntimeException{}
  private String ask(String t){String a=JOptionPane.showInputDialog(this,t);if(a==null)throw new Cancel();return a;}
  private String choose(String t,String[] opts){Object a=JOptionPane.showInputDialog(this,t,t,JOptionPane.QUESTION_MESSAGE,null,opts,opts[0]);if(a==null)throw new Cancel();return a.toString();}
- private String[] form(String title,String... labels){JPanel p=new JPanel(new GridLayout(0,2,5,5));JTextField[] f=new JTextField[labels.length];for(int i=0;i<f.length;i++){p.add(new JLabel(labels[i]));f[i]=labels[i].contains("Contraseña")?new JPasswordField():new JTextField(22);p.add(f[i]);}if(JOptionPane.showConfirmDialog(this,p,title,JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)throw new Cancel();String[] a=new String[f.length];for(int i=0;i<a.length;i++)a[i]=f[i].getText();return a;}
+ private String[] form(String title,String... labels){JPanel p=new JPanel(new GridLayout(0,2,5,5));JTextField[] f=new JTextField[labels.length];for(int i=0;i<f.length;i++){p.add(new JLabel(labels[i]));f[i]=labels[i].contains("Contraseña")?new JPasswordField():new JTextField(22);if(labels[i].equals("Cantidad de equipos"))f[i].setText("1");p.add(f[i]);}if(JOptionPane.showConfirmDialog(this,p,title,JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)throw new Cancel();String[] a=new String[f.length];for(int i=0;i<a.length;i++)a[i]=f[i].getText();return a;}
  private int id(){if(tabla.getSelectedRow()<0)throw new IllegalArgumentException("Selecciona una fila");return Integer.parseInt(tabla.getValueAt(tabla.getSelectedRow(),0).toString());}
  private void empleado(boolean edit){int id=edit?id():0;String[] a=form("Empleado","Nombre","Teléfono","Correo","Usuario","Contraseña (vacía conserva)");s.empleado(id,a[0],a[1],a[2],choose("Rol",new String[]{"ADMINISTRADOR","TECNICO","VENDEDOR","MARKETING"}),a[3],a[4],choose("Activo",new String[]{"Sí","No"}).equals("Sí"));}
  private void compra() {
-  String[] a=form("Compra","Tipo","Marca","Modelo","Condición","Precio venta","Precio compra");
+  String[] a=form("Compra de equipos","Tipo","Marca","Modelo","Condición","Precio de venta por equipo","Costo de compra por equipo","Cantidad de equipos");
+  int cantidad=NegocioService.cantidadEquipos(a[6]);
   String origen=choose("¿A quién le compra INDEA?",new String[]{"Persona","Proveedor"});
-  PersonaOperacion persona="Persona".equals(origen) ? persona("Persona que vende el equipo",true).datos() : null;
-  String proveedor="Proveedor".equals(origen) ? ask("Nombre del proveedor") : null;
-  String estado=choose("Estado",new String[]{"DISPONIBLE","NO_DISPONIBLE_AUN"});
-  s.compra(a[0],a[1],a[2],a[3],a[4],a[5],persona!=null?"CLIENTE":"PROVEEDOR",persona,proveedor,estado);
+  PersonaOperacion persona="Persona".equals(origen)?persona("Persona que vende el equipo",true).datos():null;
+  ProveedorCompra proveedor="Proveedor".equals(origen)?seleccionarProveedor():null;
+  String estado=choose("Estado inicial de los equipos",new String[]{"DISPONIBLE","NO_DISPONIBLE_AUN"});
+  if (!Ui.confirmar(this,"¿Registrar la compra de "+cantidad+" equipo(s)? Se agregarán por separado al inventario.")) return;
+  s.compra(a[0],a[1],a[2],a[3],a[4],a[5],persona,proveedor,estado,cantidad);
+  Ui.info(this,"Compra registrada. Se agregaron "+cantidad+" equipo(s) al inventario.");
+ }
+
+ private ProveedorCompra seleccionarProveedor() {
+  List<SelectorOperacion.Opcion<ProveedorCompra>> opciones=new ArrayList<>();
+  for (var p:new ProveedorService().listar()) {
+   var f=p.ficha();
+   String etiqueta=f.nombre()+(f.contacto()==null?"":" · "+f.contacto())+(f.telefono()==null?"":" · "+f.telefono());
+   opciones.add(new SelectorOperacion.Opcion<>(new ProveedorCompra(p.id(),null),etiqueta,f.telefono()));
+  }
+  ProveedorCompra elegido=SelectorOperacion.abrir(this,"Proveedor de la compra","Busca por nombre, contacto o teléfono",
+          opciones,"Registrar proveedor nuevo",()->{
+   var ficha=ProveedoresPanel.formulario(this,null,true);
+   return ficha==null?null:new ProveedorCompra(null,ficha);
+  });
+  if (elegido==null) throw new Cancel();
+  return elegido;
  }
 
  private void venta() {
@@ -151,6 +180,10 @@ public class NegocioFrame extends JPanel {
  void refresh(){
   if (pestanasInventario!=null && pestanasInventario.getSelectedComponent()==refacciones) {
    refacciones.refrescar();
+   return;
+  }
+  if (pestanasInventario!=null && pestanasInventario.getSelectedComponent()==proveedores) {
+   proveedores.refrescar();
    return;
   }
   Object[][] data;String[] cols;switch(vista){case "inventario":data=s.query(vista,filtro,filtro);cols=new String[]{"ID","Tipo","Marca","Modelo","Condición","Precio","Estado"};break;case "empleados":data=s.query(vista);cols=new String[]{"ID","Nombre","Teléfono","Correo","Rol","Activo","Usuario"};break;case "publicaciones":data=s.query(vista);cols=new String[]{"ID","Equipo","Título","Descripción","Tipo","Activa"};break;case "historial":data=filtro.isEmpty()?new Object[0][]:s.query(vista,Integer.parseInt(filtro),Integer.parseInt(filtro),Integer.parseInt(filtro));cols=new String[]{"Operación","Referencia","Fecha","Importe","Estado"};break;default:if(filtro.isEmpty())filtro=LocalDate.now()+","+LocalDate.now();String[] d=filtro.split(",");data=s.query(vista,d[0],d[1],d[0],d[1]);cols=new String[]{"Concepto","Ingresos"};}tabla.setModel(new DefaultTableModel(data,cols){public boolean isCellEditable(int r,int c){return false;}});}

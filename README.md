@@ -19,13 +19,15 @@ Las ventanas se implementan con Swing `JFrame`, son redimensionables y usan comp
 ## Actualizar una instalación que ya tiene registros
 
 1. Cierra INDEA y conserva una copia de tu archivo local `config/db.properties`.
-2. Descomprime el proyecto actualizado, importa la nueva carpeta en Eclipse y copia tu configuración a `config/db.properties`. Comprueba que usa el mismo servidor y la misma base `indea_db`.
-3. **No ejecutes el script de creación ni importes el SQL original sobre tu base de trabajo.** Los registros viven en MySQL y no en la carpeta del proyecto.
-4. Para registrar personas con **correo y sin teléfono** en una base ya instalada, respalda tu base y ejecuta únicamente [la actualización 02](sql/actualizaciones/02_contacto_por_correo.sql) en MySQL Workbench. No borra registros y mantiene los teléfonos existentes. Si registras personas con teléfono, puedes usar la nueva interfaz sin aplicar la actualización.
+2. Descomprime el proyecto actualizado, importa la nueva carpeta en Eclipse y copia tu configuración a `config/db.properties`. Conserva la misma dirección y las mismas credenciales.
+3. Para conservar tus registros de `indea_sistema`, respalda esa base y ejecuta una sola vez [la actualización 03](sql/actualizaciones/03_proveedores_y_lotes.sql). Vincula las compras previas con su proveedor, sin borrar registros. Si tu base tiene otro nombre, modifica primero la línea `USE` del script.
+4. En `indea_sistema` la columna de teléfono ya admite correo sin teléfono. Si actualizas una versión más antigua que no tiene ese cambio, revisa por separado la actualización 02 y su nombre de base.
 
 ## Compra, venta y publicaciones sin capturar IDs
 
-- En **Inventario → Compra**, elige **Persona** para buscar por nombre, teléfono o correo. Usa **Registrar persona nueva** si no aparece. El alta y la compra se guardan juntas. Si compras a un negocio, elige **Proveedor** y escribe su nombre.
+- En **Inventario → Compra**, elige **Persona** para buscar por nombre, teléfono o correo. Usa **Registrar persona nueva** si no aparece. El alta y la compra se guardan juntas. Si compras a un negocio, elige **Proveedor**, selecciónalo o pulsa **Registrar proveedor nuevo**. Captura la cantidad y los precios por equipo. Cada unidad queda disponible para su seguimiento y venta por separado, según el estado elegido.
+- En **Inventario → Proveedores**, administrador y vendedor pueden crear y editar fichas y consultar el historial. El historial muestra las compras agrupadas por lote, con cantidad, costo por equipo y total.
+- En **Reparaciones → Seguimiento**, selecciona una fila y usa **Copiar folio** o selecciona el texto de su casilla. El nombre del cliente aparece en otra línea.
 - En **Inventario → Venta**, selecciona el equipo en la tabla y después a la persona compradora. Puedes registrarla ahí mismo si hace falta.
 - En **Publicaciones → Nueva**, selecciona el equipo por marca, modelo o estado. Para editar una publicación existente, selecciona su fila y conserva el equipo asociado.
 - En **Historial**, busca a la persona para consultar sus compras, ventas y reparaciones.
@@ -37,23 +39,22 @@ Las ventanas se implementan con Swing `JFrame`, son redimensionables y usan comp
 3. Como **Administrador** o **Técnico**, abre **Reparaciones → Seguimiento**, selecciona un folio y pulsa **Refacciones del folio → Agregar refacción**. Busca la pieza, elígela e indica cuántas unidades se usaron.
 4. Revisa el listado del folio y vuelve a **Inventario → Refacciones**. Si se usó una pantalla de las tres disponibles, deben quedar dos. No se permiten cantidades mayores a las disponibles ni agregar piezas a folios entregados.
 
-El costo mostrado de las piezas no cambia automáticamente el costo del servicio. Se reutilizan las tablas de refacciones de la base original. Si ya tienes esa base, no hay que ejecutar un SQL nuevo ni volver a crear las tablas.
+El costo mostrado de las piezas no cambia automáticamente el costo del servicio. Esta función reutiliza las tablas de refacciones de la base original.
 
 ## Cómo ejecutarlo
 
-1. Con MySQL 8 y una base nueva, ejecuta `sql/01_crear_base_indea.sql` en MySQL Workbench (icono del rayo). Este script crea `indea_db` con 11 tablas e incorpora los ajustes que usa esta versión. El [SQL original adjunto](sql/original/bd_indea%20%281%29%281%29.sql) se conserva sin cambios como referencia. No ejecutes ambos scripts en la misma base.
+1. Con MySQL 8, abre y ejecuta [`sql/INDEA_base_xalapa.sql`](sql/INDEA_base_xalapa.sql). Crea `indea_xalapa` con 12 tablas llenas y las cinco cuentas originales. Si prefieres conservar los datos que ya capturaste, sigue la sección de actualización existente y no cambies la base en la configuración.
 2. Descarga MySQL Connector/J (opción Platform Independent) desde https://dev.mysql.com/downloads/connector/j/ y copia el archivo .jar a la carpeta lib.
 3. En Eclipse: File > Import > General > Existing Projects into Workspace y elige esta carpeta.
 4. Clic derecho en el proyecto > Build Path > Configure Build Path > Libraries > Classpath > Add JARs... y elige el .jar de la carpeta lib. Usa JDK 17 o posterior.
 5. Copia `config/db.properties.example` como `config/db.properties` y ajusta `db.user` y `db.password` para tu instalación de MySQL. Este archivo local no se sube al repositorio.
 6. Ejecuta com.indea.Main (clic derecho > Run As > Java Application).
 
-El script de instalación incluye cuentas de demostración. Si la tabla `usuarios` está vacía, la aplicación intenta crear las cuentas iniciales al arrancar.
+La base con datos incluye las cuentas originales del proyecto. Si eliges la instalación sin registros, `sql/01_crear_base_indea.sql` crea `indea_db` y sus cuentas iniciales. En ese caso reemplaza `indea_xalapa` por `indea_db` en la URL.
 
 ## Usuarios de prueba
 
 | Rol | Nombre | Usuario | Contraseña inicial |
-|---|---|---|---|
 |---|---|---|---|
 | Administrador / Dueño | Ángel Leonardo Hernández Casarín | `admin` | `admin123` |
 | Técnico | Edgar Báez García | `Edgar Báez García` | `edgar123` |
