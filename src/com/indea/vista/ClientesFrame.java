@@ -20,7 +20,7 @@ import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ClientesFrame extends JFrame {
+public class ClientesFrame extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
@@ -36,8 +36,8 @@ public class ClientesFrame extends JFrame {
     private int idSeleccionado = 0;
 
     public ClientesFrame() {
-        setTitle("INDEA - Clientes");
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        
+        
         setLayout(new BorderLayout());
         add(Ui.encabezado("Clientes", "Registrar, consultar y editar los datos de los clientes"), BorderLayout.NORTH);
 
@@ -66,7 +66,7 @@ public class ClientesFrame extends JFrame {
 
         JPanel busqueda = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JButton btnBuscar = new JButton("Buscar");
-        busqueda.add(new JLabel("Nombre o teléfono:"));
+        busqueda.add(new JLabel("Buscar por nombre o teléfono:"));
         busqueda.add(txtBuscar);
         busqueda.add(btnBuscar);
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -91,8 +91,10 @@ public class ClientesFrame extends JFrame {
             }
         });
 
-        setSize(960, 480);
-        setLocationRelativeTo(null);
+        
+        
+        
+        
         refrescar();
     }
 

@@ -105,12 +105,20 @@ public class ClienteDAOJdbc implements ClienteDAO {
 
     @Override
     public List<Cliente> buscar(String texto) {
-        String sql = "SELECT " + COLUMNAS + " FROM clientes WHERE nombre LIKE ? OR telefono LIKE ? ORDER BY nombre";
-        String patron = "%" + (texto == null ? "" : texto.trim()) + "%";
+        // Búsqueda parcial sin distinguir mayúsculas/minúsculas. En teléfonos se
+        // ignoran espacios, guiones y paréntesis, incluso si se escriben en la búsqueda.
+        String sql = "SELECT " + COLUMNAS + " FROM clientes "
+                + "WHERE LOWER(nombre) LIKE LOWER(?) "
+                + "OR REPLACE(REPLACE(REPLACE(REPLACE(telefono, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ? "
+                + "ORDER BY nombre";
+        String termino = texto == null ? "" : texto.trim();
+        String patron = "%" + termino + "%";
+        String telefonoNormalizado = termino.replaceAll("[\\s\\-()]", "");
+        String patronTelefono = "%" + telefonoNormalizado + "%";
         List<Cliente> lista = new ArrayList<>();
         try (Connection con = ConexionBD.obtener(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, patron);
-            ps.setString(2, patron);
+            ps.setString(2, patronTelefono);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     lista.add(mapear(rs));

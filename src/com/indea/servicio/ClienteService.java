@@ -17,7 +17,7 @@ public class ClienteService {
     private final ClienteDAO clienteDAO = new ClienteDAOJdbc();
 
     public Cliente registrarCliente(String nombre, String telefono, String correo, String direccion) {
-        Sesion.exigirRol(Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.TECNICO);
+        Sesion.exigirRol(Rol.values());
         Cliente c = construir(0, nombre, telefono, correo, direccion);
         Cliente existente = clienteDAO.buscarPorTelefono(c.getTelefono());
         if (existente != null) {
@@ -28,7 +28,7 @@ public class ClienteService {
     }
 
     public void actualizarCliente(int id, String nombre, String telefono, String correo, String direccion) {
-        Sesion.exigirRol(Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.TECNICO);
+        Sesion.exigirRol(Rol.values());
         if (id <= 0) {
             throw new ValidacionException("Selecciona un cliente de la tabla para actualizarlo.");
         }
@@ -58,12 +58,12 @@ public class ClienteService {
     }
 
     public List<Cliente> buscarClientes(String texto) {
-        Sesion.exigirRol(Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.TECNICO);
+        Sesion.exigirRol(Rol.values());
         return clienteDAO.buscar(texto);
     }
 
     public Cliente buscarPorTelefono(String telefono) {
-        Sesion.exigirRol(Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.TECNICO);
+        Sesion.exigirRol(Rol.values());
         return clienteDAO.buscarPorTelefono(normalizarTelefono(telefono));
     }
 
