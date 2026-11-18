@@ -8,6 +8,8 @@ import com.indea.modelo.Empleado;
 import com.indea.modelo.EstadoReparacion;
 import com.indea.modelo.Reparacion;
 import com.indea.modelo.Rol;
+import com.indea.servicio.RefaccionService;
+import com.indea.servicio.RefaccionService.Refaccion;
 import com.indea.util.Sesion;
 
 import javax.swing.BorderFactory;
@@ -16,6 +18,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
@@ -26,6 +29,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Font;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.util.ArrayList;
@@ -58,6 +62,9 @@ public class ReparacionesFrame extends JPanel {
     private final JTextArea txtDiagnostico = new JTextArea(4, 20);
     private final JTextArea txtHistorial = new JTextArea(6, 22);
     private final JButton btnGuardarCambios = new JButton("Guardar cambios");
+    private final JButton btnRefacciones = new JButton("Refacciones del folio");
+    private final RefaccionService servicioRefacciones = new RefaccionService();
+    private boolean folioEntregado;
     private String folioSeleccionado;
 
     public ReparacionesFrame() {
@@ -78,6 +85,7 @@ public class ReparacionesFrame extends JPanel {
         
         refrescarTabla();
         habilitarEdicion(false);
+        btnRefacciones.setEnabled(false);
     }
 
     private JPanel construirNueva() {
@@ -159,6 +167,7 @@ public class ReparacionesFrame extends JPanel {
         sur.add(detalle, BorderLayout.CENTER);
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.LEFT));
         botones.add(btnGuardarCambios);
+        botones.add(btnRefacciones);
         sur.add(botones, BorderLayout.SOUTH);
 
         JPanel panel = new JPanel(new BorderLayout(0, 6));
@@ -174,6 +183,7 @@ public class ReparacionesFrame extends JPanel {
             refrescarTabla();
         });
         btnGuardarCambios.addActionListener(e -> guardarCambios());
+        btnRefacciones.addActionListener(e -> mostrarRefacciones());
         tabla.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 cargarSeleccion();
@@ -311,12 +321,18 @@ public class ReparacionesFrame extends JPanel {
 
     private void cargarSeleccion() {
         int fila = tabla.getSelectedRow();
+        folioSeleccionado = null;
+        btnRefacciones.setEnabled(false);
         if (fila < 0 || fila >= mostradas.size()) {
+            lblFolio.setText("Selecciona una reparación de la tabla");
+            habilitarEdicion(false);
             return;
         }
         try {
             Reparacion r = controlador.consultarPorFolio(mostradas.get(fila).getFolio());
             folioSeleccionado = r.getFolio();
+            folioEntregado = r.getEstado() == EstadoReparacion.ENTREGADO;
+            btnRefacciones.setEnabled(true);
             lblFolio.setText(r.getFolio() + " - " + r.getCliente().getNombre());
             cmbEstado.setSelectedItem(r.getEstado());
             txtCosto.setText(r.getCostoServicio().toPlainString());
@@ -333,6 +349,55 @@ public class ReparacionesFrame extends JPanel {
         } catch (RuntimeException ex) {
             Ui.manejar(this, ex);
         }
+    }
+
+    private void mostrarRefacciones() {
+        String folio = folioSeleccionado;
+        if (folio == null) return;
+        try {
+            while (true) {
+                DefaultTableModel detalle = Ui.modeloTabla("Refacción", "Cantidad", "Costo unitario", "Subtotal");
+                for (var pieza : servicioRefacciones.listarPorFolio(folio)) {
+                    detalle.addRow(new Object[] {pieza.nombre(), pieza.cantidad(), pieza.costoUnitario(),
+                            pieza.costoUnitario().multiply(java.math.BigDecimal.valueOf(pieza.cantidad()))});
+                }
+                JTable piezas = new JTable(detalle);
+                piezas.setFillsViewportHeight(true);
+                JScrollPane conteo = new JScrollPane(piezas);
+                conteo.setPreferredSize(new Dimension(525, 180));
+                JPanel contenido = new JPanel(new BorderLayout(0, 6));
+                contenido.add(new JLabel(detalle.getRowCount() == 0 ? "Todavía no hay piezas asignadas."
+                        : "Piezas utilizadas en el folio. El costo del servicio se captura aparte."), BorderLayout.NORTH);
+                contenido.add(conteo, BorderLayout.CENTER);
+                String[] acciones = folioEntregado ? new String[]{"Cerrar"} : new String[]{"Agregar refacción", "Cerrar"};
+                int accion = JOptionPane.showOptionDialog(this, contenido, "Refacciones · " + folio,
+                        JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, acciones, "Cerrar");
+                if (folioEntregado || accion != 0) return;
+                try { agregarRefaccion(folio); } catch (RuntimeException e) { Ui.manejar(this, e); }
+            }
+        } catch (RuntimeException e) {
+            Ui.manejar(this, e);
+        }
+    }
+
+    private void agregarRefaccion(String folio) {
+        List<SelectorOperacion.Opcion<Refaccion>> opciones = new ArrayList<>();
+        for (Refaccion pieza : servicioRefacciones.listar()) {
+            if (pieza.stock() > 0) {
+                opciones.add(new SelectorOperacion.Opcion<>(pieza, pieza.nombre() + " · " + pieza.stock()
+                        + " disponibles · costo " + pieza.costo().toPlainString(), null));
+            }
+        }
+        if (opciones.isEmpty()) {
+            Ui.aviso(this, "No hay refacciones con existencias. El administrador puede registrarlas en Inventario → Refacciones.");
+            return;
+        }
+        Refaccion pieza = SelectorOperacion.abrir(this, "Agregar refacción al folio " + folio,
+                "Buscar por nombre de la pieza", opciones, null, null);
+        if (pieza == null) return;
+        String cantidad = JOptionPane.showInputDialog(this, "Unidades que se usarán de " + pieza.nombre(), "1");
+        if (cantidad == null) return;
+        servicioRefacciones.asignar(folio, pieza.id(), cantidad);
     }
 
     private void guardarCambios() {

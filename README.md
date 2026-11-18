@@ -30,6 +30,15 @@ Las ventanas se implementan con Swing `JFrame`, son redimensionables y usan comp
 - En **Publicaciones → Nueva**, selecciona el equipo por marca, modelo o estado. Para editar una publicación existente, selecciona su fila y conserva el equipo asociado.
 - En **Historial**, busca a la persona para consultar sus compras, ventas y reparaciones.
 
+## Refacciones para reparaciones
+
+1. Como **Administrador**, abre **Inventario → Refacciones → Nueva refacción**. Escribe el nombre, el costo por pieza y las existencias iniciales. Ejemplo: Pantalla 14 pulgadas, costo `650.00`, existencias `3`.
+2. Para registrar una llegada de piezas, elige la refacción y pulsa **Agregar existencias**. La cantidad se suma a la que ya había.
+3. Como **Administrador** o **Técnico**, abre **Reparaciones → Seguimiento**, selecciona un folio y pulsa **Refacciones del folio → Agregar refacción**. Busca la pieza, elígela e indica cuántas unidades se usaron.
+4. Revisa el listado del folio y vuelve a **Inventario → Refacciones**. Si se usó una pantalla de las tres disponibles, deben quedar dos. No se permiten cantidades mayores a las disponibles ni agregar piezas a folios entregados.
+
+El costo mostrado de las piezas no cambia automáticamente el costo del servicio. Se reutilizan las tablas de refacciones de la base original. Si ya tienes esa base, no hay que ejecutar un SQL nuevo ni volver a crear las tablas.
+
 ## Cómo ejecutarlo
 
 1. Con MySQL 8 y una base nueva, ejecuta `sql/01_crear_base_indea.sql` en MySQL Workbench (icono del rayo). Este script crea `indea_db` con 11 tablas e incorpora los ajustes que usa esta versión. El [SQL original adjunto](sql/original/bd_indea%20%281%29%281%29.sql) se conserva sin cambios como referencia. No ejecutes ambos scripts en la misma base.

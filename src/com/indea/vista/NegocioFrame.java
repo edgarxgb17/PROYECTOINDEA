@@ -20,7 +20,28 @@ public class NegocioFrame extends JPanel {
  private final JPanel botones=new JPanel();
  private final String vista;
  private String filtro="";
- public NegocioFrame(String vista){this.vista=vista;setLayout(new BorderLayout());add(Ui.encabezado(vista.toUpperCase(),"Sistema de gestión INDEA"),BorderLayout.NORTH);add(new JScrollPane(tabla));add(botones,BorderLayout.SOUTH);
+ private JTabbedPane pestanasInventario;
+ private RefaccionesPanel refacciones;
+ public NegocioFrame(String vista){
+  this.vista=vista;
+  setLayout(new BorderLayout());
+  add(Ui.encabezado(vista.toUpperCase(java.util.Locale.ROOT),"Sistema de gestión INDEA"),BorderLayout.NORTH);
+  if ("inventario".equals(vista) && (Sesion.getRol()==Rol.ADMINISTRADOR || Sesion.getRol()==Rol.TECNICO)) {
+   JPanel equipos=new JPanel(new BorderLayout());
+   equipos.add(new JScrollPane(tabla),BorderLayout.CENTER);
+   equipos.add(botones,BorderLayout.SOUTH);
+   pestanasInventario=new JTabbedPane();
+   refacciones=new RefaccionesPanel();
+   pestanasInventario.addTab("Equipos",equipos);
+   pestanasInventario.addTab("Refacciones",refacciones);
+   pestanasInventario.addChangeListener(e->{
+    try { refresh(); } catch(RuntimeException ex) { Ui.manejar(this,ex); }
+   });
+   add(pestanasInventario,BorderLayout.CENTER);
+  } else {
+   add(new JScrollPane(tabla),BorderLayout.CENTER);
+   add(botones,BorderLayout.SOUTH);
+  }
  switch(vista){
  case "inventario":
   boton("Filtrar",()->filtro=choose("Estado",new String[]{"","DISPONIBLE","VENDIDO","NO_DISPONIBLE_AUN"}));
@@ -127,5 +148,10 @@ public class NegocioFrame extends JPanel {
   if (JOptionPane.showConfirmDialog(this,p,"Publicación",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) throw new Cancel();
   s.publicacion(id,equipo,titulo.getText(),descripcion.getText(),(String)tipo.getSelectedItem(),activa.isSelected());
  }
- void refresh(){Object[][] data;String[] cols;switch(vista){case "inventario":data=s.query(vista,filtro,filtro);cols=new String[]{"ID","Tipo","Marca","Modelo","Condición","Precio","Estado"};break;case "empleados":data=s.query(vista);cols=new String[]{"ID","Nombre","Teléfono","Correo","Rol","Activo","Usuario"};break;case "publicaciones":data=s.query(vista);cols=new String[]{"ID","Equipo","Título","Descripción","Tipo","Activa"};break;case "historial":data=filtro.isEmpty()?new Object[0][]:s.query(vista,Integer.parseInt(filtro),Integer.parseInt(filtro),Integer.parseInt(filtro));cols=new String[]{"Operación","Referencia","Fecha","Importe","Estado"};break;default:if(filtro.isEmpty())filtro=LocalDate.now()+","+LocalDate.now();String[] d=filtro.split(",");data=s.query(vista,d[0],d[1],d[0],d[1]);cols=new String[]{"Concepto","Ingresos"};}tabla.setModel(new DefaultTableModel(data,cols){public boolean isCellEditable(int r,int c){return false;}});}
+ void refresh(){
+  if (pestanasInventario!=null && pestanasInventario.getSelectedComponent()==refacciones) {
+   refacciones.refrescar();
+   return;
+  }
+  Object[][] data;String[] cols;switch(vista){case "inventario":data=s.query(vista,filtro,filtro);cols=new String[]{"ID","Tipo","Marca","Modelo","Condición","Precio","Estado"};break;case "empleados":data=s.query(vista);cols=new String[]{"ID","Nombre","Teléfono","Correo","Rol","Activo","Usuario"};break;case "publicaciones":data=s.query(vista);cols=new String[]{"ID","Equipo","Título","Descripción","Tipo","Activa"};break;case "historial":data=filtro.isEmpty()?new Object[0][]:s.query(vista,Integer.parseInt(filtro),Integer.parseInt(filtro),Integer.parseInt(filtro));cols=new String[]{"Operación","Referencia","Fecha","Importe","Estado"};break;default:if(filtro.isEmpty())filtro=LocalDate.now()+","+LocalDate.now();String[] d=filtro.split(",");data=s.query(vista,d[0],d[1],d[0],d[1]);cols=new String[]{"Concepto","Ingresos"};}tabla.setModel(new DefaultTableModel(data,cols){public boolean isCellEditable(int r,int c){return false;}});}
 }
