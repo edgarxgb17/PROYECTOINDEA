@@ -16,6 +16,20 @@ Flujo completo para la demostración: iniciar sesión, registrar cliente, regist
 
 Las ventanas se implementan con Swing `JFrame`, son redimensionables y usan componentes Swing estándar. En Eclipse, la pestaña **Design** requiere instalar el complemento WindowBuilder; el diseño visual no se guarda como un archivo de formulario independiente. Los diagramas actualizados están en `docs/uml/`. Consulta `docs/INCREMENTO3.md` para validación y alcance.
 
+## Actualizar una instalación que ya tiene registros
+
+1. Cierra INDEA y conserva una copia de tu archivo local `config/db.properties`.
+2. Descomprime el proyecto actualizado, importa la nueva carpeta en Eclipse y copia tu configuración a `config/db.properties`. Comprueba que usa el mismo servidor y la misma base `indea_db`.
+3. **No ejecutes el script de creación ni importes el SQL original sobre tu base de trabajo.** Los registros viven en MySQL y no en la carpeta del proyecto.
+4. Para registrar personas con **correo y sin teléfono** en una base ya instalada, respalda tu base y ejecuta únicamente [la actualización 02](sql/actualizaciones/02_contacto_por_correo.sql) en MySQL Workbench. No borra registros y mantiene los teléfonos existentes. Si registras personas con teléfono, puedes usar la nueva interfaz sin aplicar la actualización.
+
+## Compra, venta y publicaciones sin capturar IDs
+
+- En **Inventario → Compra**, elige **Persona** para buscar por nombre, teléfono o correo. Usa **Registrar persona nueva** si no aparece. El alta y la compra se guardan juntas. Si compras a un negocio, elige **Proveedor** y escribe su nombre.
+- En **Inventario → Venta**, selecciona el equipo en la tabla y después a la persona compradora. Puedes registrarla ahí mismo si hace falta.
+- En **Publicaciones → Nueva**, selecciona el equipo por marca, modelo o estado. Para editar una publicación existente, selecciona su fila y conserva el equipo asociado.
+- En **Historial**, busca a la persona para consultar sus compras, ventas y reparaciones.
+
 ## Cómo ejecutarlo
 
 1. Con MySQL 8 y una base nueva, ejecuta `sql/01_crear_base_indea.sql` en MySQL Workbench (icono del rayo). Este script crea `indea_db` con 11 tablas e incorpora los ajustes que usa esta versión. El [SQL original adjunto](sql/original/bd_indea%20%281%29%281%29.sql) se conserva sin cambios como referencia. No ejecutes ambos scripts en la misma base.

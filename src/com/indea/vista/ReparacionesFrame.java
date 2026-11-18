@@ -242,7 +242,8 @@ public class ReparacionesFrame extends JPanel {
     private void seleccionarCliente(Cliente c) {
         clienteSeleccionado = c;
         txtTelefonoCliente.setText(c.getNombre());
-        lblCliente.setText(c.getNombre() + "  •  Tel. " + c.getTelefono());
+        lblCliente.setText(c.getNombre() + "  •  " + (c.getTelefono() != null
+                ? "Tel. " + c.getTelefono() : "Correo: " + c.getCorreo()));
     }
 
     private void registrar() {
@@ -265,7 +266,12 @@ public class ReparacionesFrame extends JPanel {
         sb.append("Folio:    ").append(r.getFolio()).append("\n");
         sb.append("Fecha:    ").append(r.getFechaIngreso().format(Ui.FECHA_HORA)).append("\n");
         sb.append("Cliente:  ").append(r.getCliente().getNombre()).append("\n");
-        sb.append("Teléfono: ").append(r.getCliente().getTelefono()).append("\n");
+        Cliente cliente = r.getCliente();
+        if (cliente.getTelefono() != null) {
+            sb.append("Teléfono: ").append(cliente.getTelefono()).append("\n");
+        } else if (cliente.getCorreo() != null) {
+            sb.append("Correo:   ").append(cliente.getCorreo()).append("\n");
+        }
         sb.append("Equipo:   ").append(r.getEquipoDescripcion()).append("\n");
         sb.append("Falla:    ").append(r.getFallaReportada()).append("\n");
         sb.append("Técnico:  ").append(r.getTecnico().getNombre()).append("\n");

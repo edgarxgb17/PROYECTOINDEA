@@ -19,7 +19,7 @@ public class ClienteService {
     public Cliente registrarCliente(String nombre, String telefono, String correo, String direccion) {
         Sesion.exigirRol(Rol.values());
         Cliente c = construir(0, nombre, telefono, correo, direccion);
-        Cliente existente = clienteDAO.buscarPorTelefono(c.getTelefono());
+        Cliente existente = c.getTelefono() == null ? null : clienteDAO.buscarPorTelefono(c.getTelefono());
         if (existente != null) {
             throw new ReglaNegocioException("Ya existe un cliente con ese teléfono (" + existente.getNombre() + "). Usa el registro existente.");
         }
@@ -33,7 +33,7 @@ public class ClienteService {
             throw new ValidacionException("Selecciona un cliente de la tabla para actualizarlo.");
         }
         Cliente c = construir(id, nombre, telefono, correo, direccion);
-        Cliente existente = clienteDAO.buscarPorTelefono(c.getTelefono());
+        Cliente existente = c.getTelefono() == null ? null : clienteDAO.buscarPorTelefono(c.getTelefono());
         if (existente != null && existente.getId() != id) {
             throw new ReglaNegocioException("Ese teléfono ya pertenece a otro cliente (" + existente.getNombre() + ").");
         }
@@ -71,7 +71,7 @@ public class ClienteService {
         return clienteDAO.contar();
     }
 
-    private Cliente construir(int id, String nombre, String telefono, String correo, String direccion) {
+    static Cliente construir(int id, String nombre, String telefono, String correo, String direccion) {
         if (nombre == null || nombre.isBlank()) {
             throw new ValidacionException("El nombre es obligatorio.");
         }
@@ -79,12 +79,15 @@ public class ClienteService {
             throw new ValidacionException("El nombre no puede pasar de 100 caracteres.");
         }
         String tel = normalizarTelefono(telefono);
-        if (!tel.matches("\\d{10}")) {
+        if (!tel.isEmpty() && !tel.matches("\\d{10}")) {
             throw new ValidacionException("El teléfono debe tener 10 dígitos.");
         }
         String mail = vacioANulo(correo);
         if (mail != null && (!mail.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+") || mail.length() > 100)) {
             throw new ValidacionException("El correo no tiene un formato válido.");
+        }
+        if (tel.isEmpty() && mail == null) {
+            throw new ValidacionException("Escribe un teléfono o un correo.");
         }
         String dir = vacioANulo(direccion);
         if (dir != null && dir.length() > 200) {
@@ -93,17 +96,17 @@ public class ClienteService {
         Cliente c = new Cliente();
         c.setId(id);
         c.setNombre(nombre.trim());
-        c.setTelefono(tel);
+        c.setTelefono(tel.isEmpty() ? null : tel);
         c.setCorreo(mail);
         c.setDireccion(dir);
         return c;
     }
 
-    private String normalizarTelefono(String telefono) {
+    private static String normalizarTelefono(String telefono) {
         return telefono == null ? "" : telefono.replaceAll("[\\s\\-()]", "");
     }
 
-    private String vacioANulo(String texto) {
+    private static String vacioANulo(String texto) {
         return texto == null || texto.isBlank() ? null : texto.trim();
     }
 }

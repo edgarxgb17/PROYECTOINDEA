@@ -27,7 +27,7 @@ CREATE TABLE usuarios (
 CREATE TABLE clientes (
     id_cliente      INT AUTO_INCREMENT PRIMARY KEY,
     nombre          VARCHAR(100) NOT NULL,
-    telefono        VARCHAR(15)  NOT NULL UNIQUE,
+    telefono        VARCHAR(15)  NULL UNIQUE,
     correo          VARCHAR(100) NULL,
     direccion       VARCHAR(200) NULL,
     fecha_registro  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
