@@ -153,3 +153,26 @@ CREATE TABLE publicaciones (
 
 
 SHOW TABLES;
+-- Fecha real de cobro para reportes.
+ALTER TABLE reparaciones ADD COLUMN fecha_pago DATETIME NULL;
+DELIMITER $$
+CREATE TRIGGER reparacion_fecha_pago BEFORE UPDATE ON reparaciones FOR EACH ROW
+BEGIN
+ IF NEW.pagado=1 AND OLD.pagado=0 THEN SET NEW.fecha_pago=NOW(); END IF;
+ IF NEW.pagado=0 THEN SET NEW.fecha_pago=NULL; END IF;
+END$$
+DELIMITER ;
+
+-- Cuentas de demostración (cambiar claves antes de producción).
+START TRANSACTION;
+INSERT INTO empleados(nombre,telefono,rol,fecha_ingreso) VALUES ('Ángel Leonardo Hernández Casarín','2281000001','ADMINISTRADOR',CURDATE());
+INSERT INTO usuarios(id_empleado,nombre_usuario,contrasena_hash) VALUES (LAST_INSERT_ID(),'admin','65536:/j/zdADO5s28UjAyb2j43Q==:hjhmmLW+oX8ffztDCg66QP4bewFCxBBPNhF7l4XW8C0=');
+INSERT INTO empleados(nombre,telefono,rol,fecha_ingreso) VALUES ('Edgar Báez García','2281000002','TECNICO',CURDATE());
+INSERT INTO usuarios(id_empleado,nombre_usuario,contrasena_hash) VALUES (LAST_INSERT_ID(),'Edgar Báez García','65536:Xy9lRRlMB4odGSZgVPHffw==:sTqmTi4NqueO+v9oZD208ISDrnWWt7aIvOuW/S50KtI=');
+INSERT INTO empleados(nombre,telefono,rol,fecha_ingreso) VALUES ('Óscar Daniel Hernández Hernández','2281000003','TECNICO',CURDATE());
+INSERT INTO usuarios(id_empleado,nombre_usuario,contrasena_hash) VALUES (LAST_INSERT_ID(),'Óscar Daniel Hernández Hernández','65536:AfEAPhgu2CvSvH3YuFpnQw==:cinRybD5SG0s/1GztNU8fWwBTm/uXVPxihOwZ9mZemw=');
+INSERT INTO empleados(nombre,telefono,rol,fecha_ingreso) VALUES ('Alan López','2281000004','VENDEDOR',CURDATE());
+INSERT INTO usuarios(id_empleado,nombre_usuario,contrasena_hash) VALUES (LAST_INSERT_ID(),'Alan López','65536:SK27M9W1bI/jq38Fful3NQ==:luSyarSApQfmWElwypRBkhAllBXhH6/nKSS3396L9+Q=');
+INSERT INTO empleados(nombre,telefono,rol,fecha_ingreso) VALUES ('Juan Manuel Hernández Cova','2281000005','MARKETING',CURDATE());
+INSERT INTO usuarios(id_empleado,nombre_usuario,contrasena_hash) VALUES (LAST_INSERT_ID(),'Juan Manuel Hernández Cova','65536:/HnzbdhCHBYFPXA3YHHciQ==:tO45WmBhkCzrL+Zvs5vLyglBccZ0o1w06tKyP6DKAXg=');
+COMMIT;

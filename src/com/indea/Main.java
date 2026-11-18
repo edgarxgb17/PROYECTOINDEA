@@ -3,6 +3,7 @@ package com.indea;
 import com.indea.excepcion.PersistenciaException;
 import com.indea.util.DatosIniciales;
 import com.indea.vista.LoginFrame;
+import com.indea.vista.UiSetup;
 
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -16,6 +17,7 @@ public class Main {
         } catch (Exception e) {
             System.err.println("Se usará el aspecto visual por defecto.");
         }
+        UiSetup.configure();
         SwingUtilities.invokeLater(() -> {
             try {
                 DatosIniciales.crearSiVacio();

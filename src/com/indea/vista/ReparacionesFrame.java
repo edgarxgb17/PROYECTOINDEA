@@ -31,14 +31,14 @@ import java.awt.GridLayout;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ReparacionesFrame extends JFrame {
+public class ReparacionesFrame extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
     private final ReparacionController controlador = new ReparacionController();
     private final ClienteController clienteController = new ClienteController();
 
-    private final JTextField txtTelefonoCliente = new JTextField(14);
+    private final JTextField txtTelefonoCliente = new JTextField(22);
     private final JLabel lblCliente = new JLabel("Ningún cliente seleccionado");
     private final JComboBox<String> cmbTipo = new JComboBox<>(new String[] {"Laptop", "PC de escritorio", "All in one", "Impresora", "Monitor", "Otro"});
     private final JTextField txtMarca = new JTextField(20);
@@ -61,8 +61,8 @@ public class ReparacionesFrame extends JFrame {
     private String folioSeleccionado;
 
     public ReparacionesFrame() {
-        setTitle("INDEA - Reparaciones");
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        
+        
         setLayout(new BorderLayout());
         add(Ui.encabezado("Reparaciones", "Recibir equipos, generar folio y dar seguimiento al servicio"), BorderLayout.NORTH);
 
@@ -72,8 +72,10 @@ public class ReparacionesFrame extends JFrame {
         add(pestanas, BorderLayout.CENTER);
 
         cargarTecnicos();
-        setSize(900, 600);
-        setLocationRelativeTo(null);
+        
+        
+        
+        
         refrescarTabla();
         habilitarEdicion(false);
     }
@@ -93,7 +95,7 @@ public class ReparacionesFrame extends JFrame {
         txtFalla.setLineWrap(true);
         txtFalla.setWrapStyleWord(true);
 
-        Ui.fila(form, 0, "Teléfono del cliente *", filaCliente);
+        Ui.fila(form, 0, "Buscar cliente (nombre o teléfono) *", filaCliente);
         Ui.fila(form, 1, "Cliente", lblCliente);
         Ui.fila(form, 2, "Tipo de equipo *", cmbTipo);
         Ui.fila(form, 3, "Marca", txtMarca);
@@ -114,7 +116,7 @@ public class ReparacionesFrame extends JFrame {
 
         btnBuscarCliente.addActionListener(e -> buscarCliente());
         txtTelefonoCliente.addActionListener(e -> buscarCliente());
-        btnNuevoCliente.addActionListener(e -> new ClientesFrame().setVisible(true));
+        btnNuevoCliente.addActionListener(e -> PanelPrincipalFrame.navegarDesde(this, "Clientes"));
         btnRegistrar.addActionListener(e -> registrar());
         btnLimpiar.addActionListener(e -> limpiarNueva());
         return panel;
@@ -201,17 +203,46 @@ public class ReparacionesFrame extends JFrame {
 
     private void buscarCliente() {
         try {
-            Cliente c = clienteController.buscarPorTelefono(txtTelefonoCliente.getText());
-            if (c == null) {
+            String criterio = txtTelefonoCliente.getText().trim();
+            if (criterio.isEmpty()) {
+                Ui.aviso(this, "Escribe el nombre o teléfono del cliente.");
+                txtTelefonoCliente.requestFocusInWindow();
+                return;
+            }
+
+            // Coincidencia exacta por teléfono; si no existe, búsqueda parcial por nombre/teléfono.
+            Cliente exacto = criterio.matches("[0-9() -]+")
+                    ? clienteController.buscarPorTelefono(criterio) : null;
+            if (exacto != null) {
+                seleccionarCliente(exacto);
+                return;
+            }
+
+            List<Cliente> coincidencias = clienteController.buscar(criterio);
+            if (coincidencias.isEmpty()) {
                 clienteSeleccionado = null;
                 lblCliente.setText("Cliente no encontrado. Usa \"Registrar cliente nuevo\".");
+                Ui.aviso(this, "No se encontraron clientes con ese nombre o teléfono.");
+            } else if (coincidencias.size() == 1) {
+                seleccionarCliente(coincidencias.get(0));
             } else {
-                clienteSeleccionado = c;
-                lblCliente.setText(c.getNombre() + " - " + c.getTelefono());
+                Object elegido = javax.swing.JOptionPane.showInputDialog(
+                        this, "Se encontraron varios clientes. Selecciona uno:",
+                        "Seleccionar cliente", javax.swing.JOptionPane.QUESTION_MESSAGE,
+                        null, coincidencias.toArray(), coincidencias.get(0));
+                if (elegido instanceof Cliente) {
+                    seleccionarCliente((Cliente) elegido);
+                }
             }
         } catch (RuntimeException ex) {
             Ui.manejar(this, ex);
         }
+    }
+
+    private void seleccionarCliente(Cliente c) {
+        clienteSeleccionado = c;
+        txtTelefonoCliente.setText(c.getNombre());
+        lblCliente.setText(c.getNombre() + "  •  Tel. " + c.getTelefono());
     }
 
     private void registrar() {

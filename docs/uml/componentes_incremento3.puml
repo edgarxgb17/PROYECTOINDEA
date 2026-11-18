@@ -1,0 +1,44 @@
+@startuml
+package "Vista Swing (JFrame)" {
+  [LoginFrame]
+  [PanelPrincipalFrame]
+  [ClientesFrame]
+  [ReparacionesFrame]
+  [ConsultaFolioDialog]
+}
+package Controlador {
+  [AutenticacionController]
+  [ClienteController]
+  [ReparacionController]
+}
+package Servicio {
+  [AutenticacionService]
+  [ClienteService]
+  [ReparacionService]
+}
+package DAO JDBC {
+  [UsuarioDAOJdbc]
+  [ClienteDAOJdbc]
+  [EmpleadoDAOJdbc]
+  [ReparacionDAOJdbc]
+}
+database "MySQL indea_db" as DB
+[LoginFrame] --> [AutenticacionController]
+[PanelPrincipalFrame] --> [ClienteController]
+[PanelPrincipalFrame] --> [ReparacionController]
+[ClientesFrame] --> [ClienteController]
+[ReparacionesFrame] --> [ClienteController]
+[ReparacionesFrame] --> [ReparacionController]
+[ConsultaFolioDialog] --> [ReparacionController]
+[AutenticacionController] --> [AutenticacionService]
+[ClienteController] --> [ClienteService]
+[ReparacionController] --> [ReparacionService]
+[AutenticacionService] --> [UsuarioDAOJdbc]
+[ClienteService] --> [ClienteDAOJdbc]
+[ReparacionService] --> [ReparacionDAOJdbc]
+[ReparacionService] --> [EmpleadoDAOJdbc]
+[UsuarioDAOJdbc] --> DB
+[ClienteDAOJdbc] --> DB
+[ReparacionDAOJdbc] --> DB
+[EmpleadoDAOJdbc] --> DB
+@enduml

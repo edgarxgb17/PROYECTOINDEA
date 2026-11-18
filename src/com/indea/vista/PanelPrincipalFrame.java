@@ -23,11 +23,46 @@ import java.awt.event.WindowEvent;
 public class PanelPrincipalFrame extends JFrame {
 
     private static final long serialVersionUID = 1L;
+    private final JPanel contenido = new JPanel(new java.awt.CardLayout());
+    private final java.util.Map<String,JPanel> vistas = new java.util.HashMap<>();
+    private final java.util.List<String> historial = new java.util.ArrayList<>();
+    private int posicion = -1;
+    private final JButton atras = new JButton("← Atrás"), adelante = new JButton("Adelante →");
+    private final JLabel ruta = new JLabel("Inicio");
+    static void navegarDesde(java.awt.Component origen, String destino) {
+        java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(origen);
+        if (w instanceof PanelPrincipalFrame) ((PanelPrincipalFrame)w).navegar(destino);
+    }
+    private void navegar(String destino) {
+        try {
+            if (!vistas.containsKey(destino)) {
+                JPanel p;
+                if (destino.equals("Clientes")) p = new ClientesFrame();
+                else if (destino.equals("Reparaciones")) p = new ReparacionesFrame();
+                else if (destino.equals("Consultar folio")) p = new ConsultaFolioPanel();
+                else p = new NegocioFrame(destino);
+                vistas.put(destino,p); contenido.add(p,destino);
+            }
+            if (posicion >= 0 && historial.get(posicion).equals(destino)) return;
+            while (historial.size() > posicion+1) historial.remove(historial.size()-1);
+            historial.add(destino); posicion++; mostrar();
+        } catch (RuntimeException ex) { Ui.manejar(this,ex); }
+    }
+    private void mostrar() {
+        String destino = historial.get(posicion);
+        ((java.awt.CardLayout)contenido.getLayout()).show(contenido,destino);
+        ruta.setText(destino); atras.setEnabled(posicion>0); adelante.setEnabled(posicion<historial.size()-1);
+        if (vistas.get(destino) instanceof NegocioFrame) ((NegocioFrame)vistas.get(destino)).refresh();
+        if (destino.equals("Inicio")) actualizarResumen(Sesion.getRol()==Rol.ADMINISTRADOR || Sesion.getRol()==Rol.TECNICO,true);
+    }
 
     private final ClienteController clienteController = new ClienteController();
     private final ReparacionController reparacionController = new ReparacionController();
     private final AutenticacionController autenticacionController = new AutenticacionController();
     private final JLabel lblReparaciones = new JLabel("-", SwingConstants.CENTER);
+    private final JLabel lblInventario = new JLabel("-", SwingConstants.CENTER);
+    private final JLabel lblVentas = new JLabel("-", SwingConstants.CENTER);
+    private final JLabel lblIngresos = new JLabel("-", SwingConstants.CENTER);
     private final JLabel lblClientes = new JLabel("-", SwingConstants.CENTER);
 
     public PanelPrincipalFrame() {
@@ -43,7 +78,7 @@ public class PanelPrincipalFrame extends JFrame {
 
         JPanel resumen = new JPanel(new GridLayout(1, 2, 12, 0));
         boolean veReparaciones = rol == Rol.ADMINISTRADOR || rol == Rol.TECNICO;
-        boolean veClientes = rol == Rol.ADMINISTRADOR || rol == Rol.VENDEDOR || rol == Rol.TECNICO;
+        boolean veClientes = true;
         if (veReparaciones) {
             resumen.add(tarjeta("Equipos en reparación", lblReparaciones));
         }
@@ -54,6 +89,7 @@ public class PanelPrincipalFrame extends JFrame {
             JLabel aviso = new JLabel("Las publicaciones de marketing estarán disponibles en los próximos sprints.", SwingConstants.CENTER);
             resumen.add(aviso);
         }
+        if (rol == Rol.ADMINISTRADOR) { resumen.add(tarjeta("Disponibles",lblInventario)); resumen.add(tarjeta("Ventas del mes",lblVentas)); resumen.add(tarjeta("Ingresos totales",lblIngresos)); }
         centro.add(resumen, BorderLayout.NORTH);
 
         JPanel menu = new JPanel(new GridLayout(0, 1, 0, 8));
@@ -66,13 +102,30 @@ public class PanelPrincipalFrame extends JFrame {
         menu.add(btnClientes);
         menu.add(btnReparaciones);
         menu.add(btnFolio);
+        for (String modulo : new String[]{"inventario","empleados","publicaciones","historial","reportes"}) {
+            if (modulo.equals("empleados") || modulo.equals("reportes")) { if (rol != Rol.ADMINISTRADOR) continue; }
+            if (modulo.equals("publicaciones") && rol == Rol.TECNICO) continue;
+            if (modulo.equals("historial") && rol == Rol.MARKETING) continue;
+            JButton b = new JButton(modulo.substring(0,1).toUpperCase()+modulo.substring(1));
+            menu.add(b); b.addActionListener(e -> {try {navegar(modulo);} catch(RuntimeException ex){Ui.manejar(this,ex);}});
+        }
         menu.add(btnSalir);
-        centro.add(menu, BorderLayout.CENTER);
-        add(centro, BorderLayout.CENTER);
+        JButton inicio = new JButton("Inicio"); inicio.addActionListener(e -> navegar("Inicio"));
+        menu.add(inicio,0);
+        JPanel lateral = new JPanel(new BorderLayout()); lateral.setBorder(BorderFactory.createEmptyBorder(8,8,8,8)); lateral.add(menu,BorderLayout.NORTH);
+        add(lateral,BorderLayout.WEST);
+        vistas.put("Inicio",centro); contenido.add(centro,"Inicio");
+        JPanel cuerpo = new JPanel(new BorderLayout());
+        JPanel barra = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+        barra.add(atras); barra.add(adelante); barra.add(ruta);
+        atras.addActionListener(e -> {if(posicion>0){posicion--;mostrar();}});
+        adelante.addActionListener(e -> {if(posicion<historial.size()-1){posicion++;mostrar();}});
+        cuerpo.add(barra,BorderLayout.NORTH); cuerpo.add(contenido,BorderLayout.CENTER); add(cuerpo,BorderLayout.CENTER);
+        navegar("Inicio");
 
-        btnClientes.addActionListener(e -> new ClientesFrame().setVisible(true));
-        btnReparaciones.addActionListener(e -> new ReparacionesFrame().setVisible(true));
-        btnFolio.addActionListener(e -> new ConsultaFolioDialog(this).setVisible(true));
+        btnClientes.addActionListener(e -> navegar("Clientes"));
+        btnReparaciones.addActionListener(e -> navegar("Reparaciones"));
+        btnFolio.addActionListener(e -> navegar("Consultar folio"));
         btnSalir.addActionListener(e -> cerrarSesion());
 
         addWindowListener(new WindowAdapter() {
@@ -82,7 +135,9 @@ public class PanelPrincipalFrame extends JFrame {
             }
         });
 
-        setPreferredSize(new Dimension(460, 420));
+        setPreferredSize(new Dimension(1280, 800));
+        setMinimumSize(new Dimension(760, 520));
+        setResizable(true);
         pack();
         setLocationRelativeTo(null);
     }
@@ -101,6 +156,7 @@ public class PanelPrincipalFrame extends JFrame {
 
     private void actualizarResumen(boolean reparaciones, boolean clientes) {
         try {
+            if (Sesion.getRol() == Rol.ADMINISTRADOR) { Object[] r = new com.indea.servicio.NegocioService().query("panel")[0]; lblInventario.setText(r[1].toString()); lblVentas.setText(r[2].toString()); lblIngresos.setText(r[3].toString()); }
             if (reparaciones) {
                 lblReparaciones.setText(String.valueOf(reparacionController.contarActivas()));
             }

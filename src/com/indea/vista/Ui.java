@@ -7,6 +7,7 @@ import com.indea.excepcion.ValidacionException;
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.UIManager;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
@@ -25,6 +26,19 @@ final class Ui {
     static final Color AZUL = new Color(31, 56, 100);
 
     private Ui() {
+    }
+
+    static void configurarEstilo() {
+        Font base = new Font("SansSerif", Font.PLAIN, 15);
+        UIManager.put("Label.font", base);
+        UIManager.put("Button.font", base.deriveFont(Font.BOLD, 14f));
+        UIManager.put("TextField.font", base);
+        UIManager.put("PasswordField.font", base);
+        UIManager.put("TextArea.font", base);
+        UIManager.put("ComboBox.font", base);
+        UIManager.put("Table.font", base);
+        UIManager.put("Table.rowHeight", 28);
+        UIManager.put("TabbedPane.font", base.deriveFont(Font.BOLD, 14f));
     }
 
     static void aviso(Component padre, String mensaje) {
@@ -50,10 +64,10 @@ final class Ui {
     static JPanel encabezado(String titulo, String subtitulo) {
         JPanel p = new JPanel(new java.awt.BorderLayout());
         p.setBackground(AZUL);
-        p.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        p.setBorder(BorderFactory.createEmptyBorder(16, 22, 16, 22));
         JLabel t = new JLabel(titulo);
         t.setForeground(Color.WHITE);
-        t.setFont(t.getFont().deriveFont(Font.BOLD, 18f));
+        t.setFont(t.getFont().deriveFont(Font.BOLD, 22f));
         p.add(t, java.awt.BorderLayout.NORTH);
         if (subtitulo != null) {
             JLabel s = new JLabel(subtitulo);
