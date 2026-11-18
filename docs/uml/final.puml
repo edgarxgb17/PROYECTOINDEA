@@ -1,0 +1,23 @@
+@startuml
+class Persona
+class Cliente
+class Empleado
+class Usuario
+class Reparacion
+class CambioEstado
+class NegocioService
+class NegocioFrame
+class PanelPrincipalFrame
+class ConexionBD
+class Sesion
+Persona <|-- Cliente
+Persona <|-- Empleado
+Usuario --> Empleado
+Reparacion --> Cliente
+Reparacion --> Empleado
+Reparacion "1" -- "*" CambioEstado
+PanelPrincipalFrame --> NegocioFrame
+NegocioFrame --> NegocioService
+NegocioService --> ConexionBD
+NegocioService --> Sesion
+@enduml
