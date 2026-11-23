@@ -12,6 +12,8 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -19,8 +21,10 @@ import java.util.Objects;
 /** Ventana de operaciones con tablas de solo lectura y formularios validados. */
 public class NegocioFrame extends JPanel {
  private final NegocioService s=new NegocioService();
- private final JTable tabla=new JTable();
+ private final JTable tabla=new TablaIndea();
  private final JPanel botones=new JPanel();
+ private final JLabel detalle=new JLabel();
+ private static final DateTimeFormatter DIA=DateTimeFormatter.ofPattern("dd/MM/yyyy");
  private final String vista;
  private String filtro="";
  private JTabbedPane pestanasInventario;
@@ -28,8 +32,9 @@ public class NegocioFrame extends JPanel {
  private ProveedoresPanel proveedores;
  public NegocioFrame(String vista){
   this.vista=vista;
-  setLayout(new BorderLayout());
-  add(Ui.encabezado(vista.toUpperCase(java.util.Locale.ROOT),"Sistema de gestión INDEA"),BorderLayout.NORTH);
+  setLayout(new BorderLayout(0, 10));
+  setBorder(BorderFactory.createEmptyBorder(4, 14, 10, 14));
+  add(Ui.encabezado(vista.substring(0,1).toUpperCase(java.util.Locale.ROOT) + vista.substring(1),"Sistema de gestión INDEA"),BorderLayout.NORTH);
   Rol rol=Sesion.getRol();
   if ("inventario".equals(vista) && (rol==Rol.ADMINISTRADOR || rol==Rol.TECNICO || rol==Rol.VENDEDOR)) {
    JPanel equipos=new JPanel(new BorderLayout());
@@ -68,7 +73,11 @@ public class NegocioFrame extends JPanel {
   break;
  case "empleados":boton("Nuevo",()->empleado(false));boton("Editar / desbloquear",()->empleado(true));break;
  case "publicaciones":boton("Nueva",()->pub(false));boton("Editar / desactivar",()->pub(true));break;
- case "historial":boton("Consultar cliente",()->filtro=String.valueOf(persona("Consultar historial",false).id()));break;
+ case "historial":
+  boton("Consultar cliente",()->filtro=String.valueOf(persona("Consultar historial",false).id()));
+  boton("Ver todos",()->filtro="");
+  botones.add(detalle);
+  break;
  case "reportes":
   boton("Periodo",this::elegirPeriodo);
   boton("PDF de ganancias",()->{
@@ -76,9 +85,10 @@ public class NegocioFrame extends JPanel {
    ExportarPdf.guardar(this,"INDEA-ganancias-"+fechas[0]+"-a-"+fechas[1],
            ()->ReportesPdfService.ganancias(fechas[0],fechas[1]));
   });
+  botones.add(detalle);
   break;
  }boton("Actualizar",()->refresh());refresh();}
- private void boton(String t,Runnable r){JButton b=new JButton(t);botones.add(b);b.addActionListener(e->{try{r.run();refresh();}catch(Cancel x){}catch(RuntimeException x){Ui.manejar(this,x);}});}
+ private void boton(String t,Runnable r){JButton b=new BotonIndea(t, java.util.Set.of("Compra","Nuevo","Nueva","Consultar cliente","PDF de ganancias").contains(t));botones.add(b);b.addActionListener(e->{try{r.run();refresh();}catch(Cancel x){}catch(RuntimeException x){Ui.manejar(this,x);}});}
  private static class Cancel extends RuntimeException{}
  private String ask(String t){String a=JOptionPane.showInputDialog(this,t);if(a==null)throw new Cancel();return a;}
  private String choose(String t,String[] opts){Object a=JOptionPane.showInputDialog(this,t,t,JOptionPane.QUESTION_MESSAGE,null,opts,opts[0]);if(a==null)throw new Cancel();return a.toString();}
@@ -87,16 +97,17 @@ public class NegocioFrame extends JPanel {
  private void empleado(boolean edit){int id=edit?id():0;String[] a=form("Empleado","Nombre","Teléfono","Correo","Usuario","Contraseña (vacía conserva)");s.empleado(id,a[0],a[1],a[2],choose("Rol",new String[]{"ADMINISTRADOR","TECNICO","VENDEDOR","MARKETING"}),a[3],a[4],choose("Activo",new String[]{"Sí","No"}).equals("Sí"));}
  private LocalDate[] periodoReporte() {
   LocalDate hoy=LocalDate.now();
-  if(filtro.isBlank())return new LocalDate[]{hoy,hoy};
+  if(filtro.isBlank())return new LocalDate[]{hoy.withDayOfMonth(1),hoy};
   String[] fechas=filtro.split(",");
   return new LocalDate[]{LocalDate.parse(fechas[0]),LocalDate.parse(fechas[1])};
  }
 
  private void elegirPeriodo() {
-  String elegido=choose("Periodo",new String[]{"Hoy","Semana actual","Mes actual","Elegir fechas"});
+  String elegido=choose("Periodo",new String[]{"Hoy","Semana actual","Mes actual","Todo el historial","Elegir fechas"});
   LocalDate fin=LocalDate.now(),inicio=fin;
   if ("Semana actual".equals(elegido)) inicio=fin.minusDays(fin.getDayOfWeek().getValue()-1);
   else if ("Mes actual".equals(elegido)) inicio=fin.withDayOfMonth(1);
+  else if ("Todo el historial".equals(elegido)) inicio=LocalDate.of(1900,1,1);
   else if ("Elegir fechas".equals(elegido)) {
    LocalDate[] anterior=periodoReporte();
    JTextField desde=new JTextField(anterior[0].toString(),12),hasta=new JTextField(anterior[1].toString(),12);
@@ -225,5 +236,55 @@ public class NegocioFrame extends JPanel {
    proveedores.refrescar();
    return;
   }
-  Object[][] data;String[] cols;switch(vista){case "inventario":data=s.query(vista,filtro,filtro);cols=new String[]{"ID","Tipo","Marca","Modelo","Condición","Precio","Estado"};break;case "empleados":data=s.query(vista);cols=new String[]{"ID","Nombre","Teléfono","Correo","Rol","Activo","Usuario"};break;case "publicaciones":data=s.query(vista);cols=new String[]{"ID","Equipo","Título","Descripción","Tipo","Activa"};break;case "historial":data=filtro.isEmpty()?new Object[0][]:s.query(vista,Integer.parseInt(filtro),Integer.parseInt(filtro),Integer.parseInt(filtro));cols=new String[]{"Operación","Referencia","Fecha","Importe","Estado"};break;default:if(filtro.isEmpty())filtro=LocalDate.now()+","+LocalDate.now();String[] d=filtro.split(",");data=s.query(vista,d[0],d[1],d[0],d[1]);cols=new String[]{"Concepto","Ingresos"};}tabla.setModel(new DefaultTableModel(data,cols){public boolean isCellEditable(int r,int c){return false;}});}
+  Object[][] data;
+  String[] cols;
+  switch(vista){
+   case "inventario":
+    data=s.query(vista,filtro,filtro);
+    cols=new String[]{"ID","Tipo","Marca","Modelo","Condición","Precio","Estado"};
+    break;
+   case "empleados":
+    data=s.query(vista);
+    cols=new String[]{"ID","Nombre","Teléfono","Correo","Rol","Activo","Usuario"};
+    break;
+   case "publicaciones":
+    data=s.query(vista);
+    cols=new String[]{"ID","Equipo","Título","Descripción","Tipo","Activa"};
+    break;
+   case "historial":
+    int cliente=filtro.isEmpty()?0:Integer.parseInt(filtro);
+    data=s.query(vista,cliente,cliente,cliente,cliente,cliente,cliente);
+    cols=new String[]{"Operación","Referencia","Cliente / Origen","Fecha","Importe","Estado"};
+    detalle.setText(cliente==0
+            ?"  Todas las operaciones ("+data.length+")"
+            :"  Operaciones del cliente seleccionado ("+data.length+")");
+    break;
+   case "reportes":
+    LocalDate[] periodo=periodoReporte();
+    data=s.query(vista,periodo[0],periodo[1],periodo[0],periodo[1]);
+    BigDecimal total=BigDecimal.ZERO;
+    for(Object[] fila:data) {
+     if(fila[1]!=null) total=total.add(new BigDecimal(fila[1].toString()));
+    }
+    Object[][] conTotal=java.util.Arrays.copyOf(data,data.length+1);
+    conTotal[data.length]=new Object[]{"Total de ingresos",total};
+    data=conTotal;
+    cols=new String[]{"Concepto","Ingresos (MXN)"};
+    detalle.setText("  Periodo: "+periodo[0].format(DIA)+" al "+periodo[1].format(DIA));
+    break;
+   default:
+    throw new IllegalArgumentException("Vista desconocida: "+vista);
+  }
+  tabla.setModel(new DefaultTableModel(data,cols){
+    @Override public boolean isCellEditable(int r,int c){return false;}
+  });
+  if ("inventario".equals(vista)) {
+   int[] anchos = {48, 100, 100, 165, 235, 85, 155};
+   for (int i=0; i<anchos.length; i++) tabla.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
+  } else if ("historial".equals(vista)) {
+   int[] anchos={105,130,205,156,115,137};
+   for (int i=0;i<anchos.length;i++) tabla.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
+  }
+ }
+
 }

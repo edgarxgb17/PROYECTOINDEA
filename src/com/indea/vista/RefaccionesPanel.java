@@ -17,7 +17,7 @@ import java.util.List;
 final class RefaccionesPanel extends JPanel {
     private final RefaccionService servicio = new RefaccionService();
     private final DefaultTableModel modelo = Ui.modeloTabla("Refacción", "Costo unitario", "Existencias");
-    private final JTable tabla = new JTable(modelo);
+    private final JTable tabla = new TablaIndea(modelo);
     private final JLabel estado = new JLabel(" ");
     private List<Refaccion> visibles = List.of();
 
@@ -32,8 +32,8 @@ final class RefaccionesPanel extends JPanel {
         JPanel pie = new JPanel(new BorderLayout());
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT));
         if (Sesion.getRol() == Rol.ADMINISTRADOR) {
-            JButton nueva = new JButton("Nueva refacción");
-            JButton entrada = new JButton("Agregar existencias");
+            JButton nueva = new BotonIndea("Nueva refacción", true);
+            JButton entrada = new BotonIndea("Agregar existencias");
             entrada.setEnabled(false);
             tabla.getSelectionModel().addListSelectionListener(e -> entrada.setEnabled(tabla.getSelectedRow() >= 0));
             nueva.addActionListener(e -> hacer(this::registrar));
@@ -41,10 +41,10 @@ final class RefaccionesPanel extends JPanel {
             acciones.add(nueva);
             acciones.add(entrada);
         }
-        JButton actualizar = new JButton("Actualizar");
+        JButton actualizar = new BotonIndea("Actualizar");
         actualizar.addActionListener(e -> hacer(this::refrescar));
         acciones.add(actualizar);
-        JButton btnPdf = new JButton("PDF de refacciones");
+        JButton btnPdf = new BotonIndea("PDF de refacciones");
         btnPdf.addActionListener(e -> ExportarPdf.guardar(this,"INDEA-refacciones",ReportesPdfService::refacciones));
         acciones.add(btnPdf);
         pie.add(acciones, BorderLayout.NORTH);

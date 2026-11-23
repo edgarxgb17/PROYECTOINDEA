@@ -27,8 +27,8 @@ final class SelectorOperacion {
         JTextField buscar = new JTextField(28);
         JLabel etiqueta = new JLabel(pista);
         etiqueta.setLabelFor(buscar);
-        JButton seleccionar = new JButton("Seleccionar");
-        JButton cancelar = new JButton("Cancelar");
+        JButton seleccionar = new BotonIndea("Seleccionar", true);
+        JButton cancelar = new BotonIndea("Cancelar");
         DefaultListModel<Opcion<T>> modelo = new DefaultListModel<>();
         JList<Opcion<T>> lista = new JList<>(modelo);
         lista.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -75,7 +75,7 @@ final class SelectorOperacion {
         cabecera.add(buscar, BorderLayout.CENTER);
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         if (alta != null) {
-            JButton nuevo = new JButton(textoAlta);
+            JButton nuevo = new BotonIndea(textoAlta);
             nuevo.addActionListener(e -> {
                 T creada = alta.get();
                 if (creada != null) { resultado.set(creada); dialogo.dispose(); }

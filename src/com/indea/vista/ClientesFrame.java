@@ -31,7 +31,7 @@ public class ClientesFrame extends JPanel {
     private final JTextField txtDireccion = new JTextField(20);
     private final JTextField txtBuscar = new JTextField(18);
     private final DefaultTableModel modelo = Ui.modeloTabla("Nombre", "Teléfono", "Correo", "Dirección", "Registro");
-    private final JTable tabla = new JTable(modelo);
+    private final JTable tabla = new TablaIndea(modelo);
     private final List<Cliente> mostrados = new ArrayList<>();
     private int idSeleccionado = 0;
 
@@ -48,10 +48,10 @@ public class ClientesFrame extends JPanel {
         Ui.fila(form, 2, "Correo", txtCorreo);
         Ui.fila(form, 3, "Dirección", txtDireccion);
 
-        JButton btnGuardar = new JButton("Guardar nuevo");
-        JButton btnActualizar = new JButton("Actualizar");
-        JButton btnEliminar = new JButton("Eliminar");
-        JButton btnLimpiar = new JButton("Limpiar");
+        JButton btnGuardar = new BotonIndea("Guardar nuevo", true);
+        JButton btnActualizar = new BotonIndea("Actualizar");
+        JButton btnEliminar = new BotonIndea("Eliminar");
+        JButton btnLimpiar = new BotonIndea("Limpiar");
         btnEliminar.setEnabled(Sesion.getRol() == Rol.ADMINISTRADOR);
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.LEFT));
         botones.add(btnGuardar);
@@ -65,7 +65,7 @@ public class ClientesFrame extends JPanel {
         izquierda.add(botones, BorderLayout.CENTER);
 
         JPanel busqueda = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton btnBuscar = new JButton("Buscar");
+        JButton btnBuscar = new BotonIndea("Buscar");
         busqueda.add(new JLabel("Buscar por nombre o teléfono:"));
         busqueda.add(txtBuscar);
         busqueda.add(btnBuscar);

@@ -14,8 +14,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -218,7 +216,7 @@ public class ReparacionDAOJdbc implements ReparacionDAO {
 
     @Override
     public List<Reparacion> buscar(String texto) {
-        String sql = SELECT_BASE + "WHERE r.folio LIKE ? OR c.nombre LIKE ? OR c.telefono LIKE ? ORDER BY r.id_reparacion DESC LIMIT 200";
+        String sql = SELECT_BASE + "WHERE r.folio LIKE ? OR c.nombre LIKE ? OR c.telefono LIKE ? ORDER BY r.id_reparacion DESC";
         String patron = "%" + (texto == null ? "" : texto.trim()) + "%";
         List<Reparacion> lista = new ArrayList<>();
         try (Connection con = ConexionBD.obtener(); PreparedStatement ps = con.prepareStatement(sql)) {
@@ -238,7 +236,7 @@ public class ReparacionDAOJdbc implements ReparacionDAO {
 
     @Override
     public String siguienteFolio() {
-        String prefijo = "REP-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "-";
+        String prefijo = "INDEA-OT-";
         try (Connection con = ConexionBD.obtener();
              PreparedStatement ps = con.prepareStatement("SELECT MAX(folio) FROM reparaciones WHERE folio LIKE ?")) {
             ps.setString(1, prefijo + "%");

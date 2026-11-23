@@ -28,10 +28,10 @@ public class ConsultaFolioPanel extends JPanel {
     public ConsultaFolioPanel() {
         
         setLayout(new BorderLayout());
-        add(Ui.encabezado("Estado de mi equipo", "Escribe el folio de tu recibo (ejemplo: REP-20261008-0001)"), BorderLayout.NORTH);
+        add(Ui.encabezado("Estado de mi equipo", "Escribe el folio de tu recibo (ejemplo: INDEA-OT-4016)"), BorderLayout.NORTH);
 
         JPanel busqueda = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton btnConsultar = new JButton("Consultar");
+        JButton btnConsultar = new BotonIndea("Consultar", true);
         busqueda.add(new JLabel("Folio:"));
         busqueda.add(txtFolio);
         busqueda.add(btnConsultar);

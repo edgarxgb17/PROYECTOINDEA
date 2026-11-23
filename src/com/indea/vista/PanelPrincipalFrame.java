@@ -26,8 +26,17 @@ public class PanelPrincipalFrame extends JFrame {
     private final JPanel contenido = new JPanel(new java.awt.CardLayout());
     private final java.util.Map<String,JPanel> vistas = new java.util.HashMap<>();
     private final java.util.List<String> historial = new java.util.ArrayList<>();
+    private final java.util.Map<String,BotonIndea> enlaces = new java.util.HashMap<>();
+
+    private BotonIndea enlace(String texto, String destino) {
+        BotonIndea boton = new BotonIndea(texto);
+        boton.comoMenu();
+        enlaces.put(destino, boton);
+        return boton;
+    }
+
     private int posicion = -1;
-    private final JButton atras = new JButton("← Atrás"), adelante = new JButton("Adelante →");
+    private final JButton atras = new BotonIndea("← Atrás"), adelante = new BotonIndea("Adelante →");
     private final JLabel ruta = new JLabel("Inicio");
     static void navegarDesde(java.awt.Component origen, String destino) {
         java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(origen);
@@ -51,8 +60,10 @@ public class PanelPrincipalFrame extends JFrame {
     private void mostrar() {
         String destino = historial.get(posicion);
         ((java.awt.CardLayout)contenido.getLayout()).show(contenido,destino);
-        ruta.setText(destino); atras.setEnabled(posicion>0); adelante.setEnabled(posicion<historial.size()-1);
+        enlaces.forEach((nombre, boton) -> boton.activar(nombre.equals(destino)));
+        ruta.setText(destino.substring(0,1).toUpperCase() + destino.substring(1)); atras.setEnabled(posicion>0); adelante.setEnabled(posicion<historial.size()-1);
         if (vistas.get(destino) instanceof NegocioFrame) ((NegocioFrame)vistas.get(destino)).refresh();
+        if (vistas.get(destino) instanceof ReparacionesFrame) ((ReparacionesFrame)vistas.get(destino)).refrescarAlMostrar();
         if (destino.equals("Inicio")) actualizarResumen(Sesion.getRol()==Rol.ADMINISTRADOR || Sesion.getRol()==Rol.TECNICO,true);
     }
 
@@ -67,11 +78,18 @@ public class PanelPrincipalFrame extends JFrame {
 
     public PanelPrincipalFrame() {
         Rol rol = Sesion.getRol();
+        setIconImage(Ui.LOGO.getImage());
         setTitle("INDEA - Panel principal");
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setLayout(new BorderLayout());
-        add(Ui.encabezado("INDEA - Panel principal",
-                "Bienvenido, " + Sesion.getEmpleado().getNombre() + " (" + rol.getEtiqueta() + ")"), BorderLayout.NORTH);
+        JPanel cabecera = new JPanel(new BorderLayout(14, 0));
+        cabecera.setBackground(Color.WHITE);
+        cabecera.setBorder(BorderFactory.createEmptyBorder(13, 19, 13, 19));
+        JLabel titulo = new JLabel("Panel principal");
+        titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 22f));
+        cabecera.add(titulo, BorderLayout.WEST);
+        cabecera.add(new JLabel(Sesion.getEmpleado().getNombre() + "  ·  " + rol.getEtiqueta(),
+                SwingConstants.RIGHT), BorderLayout.CENTER);
 
         JPanel centro = new JPanel(new BorderLayout(0, 16));
         centro.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -90,13 +108,16 @@ public class PanelPrincipalFrame extends JFrame {
             resumen.add(aviso);
         }
         if (rol == Rol.ADMINISTRADOR) { resumen.add(tarjeta("Disponibles",lblInventario)); resumen.add(tarjeta("Ventas del mes",lblVentas)); resumen.add(tarjeta("Ingresos totales",lblIngresos)); }
-        centro.add(resumen, BorderLayout.NORTH);
+        JPanel portada = new JPanel(new BorderLayout(0, 14));
+        portada.add(Ui.encabezado("Resumen de actividad", "Sistema de gestión INDEA"), BorderLayout.NORTH);
+        portada.add(resumen, BorderLayout.CENTER);
+        centro.add(portada, BorderLayout.NORTH);
 
         JPanel menu = new JPanel(new GridLayout(0, 1, 0, 8));
-        JButton btnClientes = new JButton("Clientes");
-        JButton btnReparaciones = new JButton("Reparaciones");
-        JButton btnFolio = new JButton("Consultar reparación por folio");
-        JButton btnSalir = new JButton("Cerrar sesión");
+        JButton btnClientes = enlace("Clientes", "Clientes");
+        JButton btnReparaciones = enlace("Reparaciones", "Reparaciones");
+        JButton btnFolio = enlace("Consultar reparación por folio", "Consultar folio");
+        JButton btnSalir = enlace("Cerrar sesión", "Salir");
         btnClientes.setEnabled(veClientes);
         btnReparaciones.setEnabled(veReparaciones);
         menu.add(btnClientes);
@@ -106,13 +127,28 @@ public class PanelPrincipalFrame extends JFrame {
             if (modulo.equals("empleados") || modulo.equals("reportes")) { if (rol != Rol.ADMINISTRADOR) continue; }
             if (modulo.equals("publicaciones") && rol == Rol.TECNICO) continue;
             if (modulo.equals("historial") && rol == Rol.MARKETING) continue;
-            JButton b = new JButton(modulo.substring(0,1).toUpperCase()+modulo.substring(1));
+            JButton b = enlace(modulo.substring(0,1).toUpperCase()+modulo.substring(1), modulo);
             menu.add(b); b.addActionListener(e -> {try {navegar(modulo);} catch(RuntimeException ex){Ui.manejar(this,ex);}});
         }
         menu.add(btnSalir);
-        JButton inicio = new JButton("Inicio"); inicio.addActionListener(e -> navegar("Inicio"));
+        JButton inicio = enlace("Inicio", "Inicio"); inicio.addActionListener(e -> navegar("Inicio"));
         menu.add(inicio,0);
-        JPanel lateral = new JPanel(new BorderLayout()); lateral.setBorder(BorderFactory.createEmptyBorder(8,8,8,8)); lateral.add(menu,BorderLayout.NORTH);
+        JPanel lateral = new JPanel(new BorderLayout());
+        lateral.setBackground(Ui.AZUL);
+        lateral.setBorder(BorderFactory.createEmptyBorder(14, 9, 10, 9));
+        JLabel logo = new JLabel(new javax.swing.ImageIcon(Ui.LOGO.getImage()
+                .getScaledInstance(124, 84, java.awt.Image.SCALE_SMOOTH)));
+        logo.setBorder(BorderFactory.createEmptyBorder(0, 0, 14, 0));
+        lateral.add(logo, BorderLayout.NORTH);
+        menu.setOpaque(false);
+        JPanel lista = new JPanel(new BorderLayout());
+        lista.setBackground(Ui.AZUL);
+        lista.add(menu, BorderLayout.NORTH);
+        javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(lista);
+        scroll.setBorder(null);
+        scroll.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        Ui.ajustarDesplazamiento(scroll);
+        lateral.add(scroll, BorderLayout.CENTER);
         add(lateral,BorderLayout.WEST);
         vistas.put("Inicio",centro); contenido.add(centro,"Inicio");
         JPanel cuerpo = new JPanel(new BorderLayout());
@@ -120,7 +156,11 @@ public class PanelPrincipalFrame extends JFrame {
         barra.add(atras); barra.add(adelante); barra.add(ruta);
         atras.addActionListener(e -> {if(posicion>0){posicion--;mostrar();}});
         adelante.addActionListener(e -> {if(posicion<historial.size()-1){posicion++;mostrar();}});
-        cuerpo.add(barra,BorderLayout.NORTH); cuerpo.add(contenido,BorderLayout.CENTER); add(cuerpo,BorderLayout.CENTER);
+        barra.setBorder(BorderFactory.createEmptyBorder(3, 9, 3, 9));
+        JPanel superior = new JPanel(new BorderLayout());
+        superior.add(cabecera, BorderLayout.NORTH);
+        superior.add(barra, BorderLayout.SOUTH);
+        cuerpo.add(superior,BorderLayout.NORTH); cuerpo.add(contenido,BorderLayout.CENTER); add(cuerpo,BorderLayout.CENTER);
         navegar("Inicio");
 
         btnClientes.addActionListener(e -> navegar("Clientes"));
@@ -129,6 +169,13 @@ public class PanelPrincipalFrame extends JFrame {
         btnSalir.addActionListener(e -> cerrarSesion());
 
         addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (confirmarSalida("¿Deseas cerrar INDEA?")) {
+                    autenticacionController.cerrarSesion();
+                    dispose();
+                }
+            }
             @Override
             public void windowActivated(WindowEvent e) {
                 actualizarResumen(veReparaciones, veClientes);
@@ -144,7 +191,9 @@ public class PanelPrincipalFrame extends JFrame {
 
     private JPanel tarjeta(String titulo, JLabel valor) {
         JPanel p = new JPanel(new BorderLayout());
-        p.setBorder(BorderFactory.createLineBorder(new Color(180, 190, 210)));
+        p.setBackground(Color.WHITE);
+        p.setBorder(BorderFactory.createLineBorder(Ui.LINEA));
+        valor.setForeground(Ui.ACCION);
         valor.setFont(valor.getFont().deriveFont(Font.BOLD, 28f));
         JLabel t = new JLabel(titulo, SwingConstants.CENTER);
         t.setBorder(BorderFactory.createEmptyBorder(8, 4, 0, 4));
@@ -168,7 +217,15 @@ public class PanelPrincipalFrame extends JFrame {
         }
     }
 
+    private boolean confirmarSalida(String mensaje) {
+        Object[] botones = {"Cancelar", "Sí, salir"};
+        return javax.swing.JOptionPane.showOptionDialog(this, mensaje,
+                "Confirmar salida", javax.swing.JOptionPane.DEFAULT_OPTION,
+                javax.swing.JOptionPane.QUESTION_MESSAGE, null, botones, botones[0]) == 1;
+    }
+
     private void cerrarSesion() {
+        if (!confirmarSalida("¿Quieres cerrar tu sesión y regresar a la pantalla de acceso?")) return;
         autenticacionController.cerrarSesion();
         new LoginFrame().setVisible(true);
         dispose();

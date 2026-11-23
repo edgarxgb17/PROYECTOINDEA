@@ -2,6 +2,25 @@
 
 Equipo 9 - Programación Orientada a Objetos, Universidad Veracruzana.
 
+## Folios y controles de la interfaz
+
+- **Consulta de reparaciones:** las dos pantallas para consultar un equipo muestran el ejemplo real `INDEA-OT-4016` en lugar del formato antiguo `REP-20261008-0001`.
+- **Nuevas reparaciones:** los folios que se generen a partir de esta versión utilizan el prefijo `INDEA-OT-` y un número consecutivo; así coincide con los folios de la base de ejemplo. Los folios ya guardados, incluidos los que empiezan con `REP-`, no se modifican y se pueden consultar.
+- **Botones y confirmaciones:** el foco del teclado se señala con un borde exterior discreto en los botones estándar de Java, sin dibujar otro recuadro alrededor del texto. Se conservan los mensajes de confirmación de salida.
+- **Base de datos:** no hace falta importar de nuevo la base ni modificar los registros.
+
+## Funcionamiento de las pantallas y navegación
+
+- **Reparaciones → Seguimiento:** el listado de folios, clientes, equipos, estados y fechas vuelve a contar con un área visible; ahora dispone de desplazamiento vertical y horizontal, incluso al reducir la ventana. El formulario de actualización se recorre desplazándose por la misma pantalla.
+- **Buscar / Ver todas:** el listado muestra el número de resultados y un mensaje claro cuando no hay coincidencias. Se quitó el límite fijo de 200 reparaciones de la consulta para poder recorrer todos los registros guardados.
+- **Pantallas más pequeñas:** los botones de búsqueda pasan a otra línea y los dos paneles de detalle se colocan uno debajo de otro si no cabe mostrarlos lado a lado; los campos no deben perderse al cambiar de tamaño.
+- **Cerrar sesión:** solicita confirmación antes de volver al acceso. La X de la ventana principal también solicita confirmación antes de salir.
+- **Navegación:** el menú lateral y los formularios de reparación admiten desplazamiento con rueda; se evita una consulta repetida al abrir el módulo.
+
+**Importante para conservar los datos:** este ZIP actualiza código de interfaz y la consulta de registros. No requiere ejecutar nuevamente los scripts SQL, borrar bases de datos ni restablecer cuentas. Al abrirlo en Eclipse, utiliza la **misma configuración MySQL** que el sistema anterior; conserva una copia de `config/db.properties` y de tu base de datos antes de reemplazar el proyecto.
+
+**Comprobaciones realizadas:** compilación de todo el código y pruebas `Smoke` y `SelectoresSmoke` correctas. Comprobación visual automatizada de la tabla en ventanas normal y estrecha con datos de demostración. **No se hizo una conexión de integración a tu MySQL real**, por lo que conviene comprobar el listado con tus folios guardados después de importar el proyecto.
+
 ## Qué incluye este incremento
 
 - Inicio de sesión con usuario y contraseña (HU08): contraseñas con PBKDF2, bloqueo tras 3 intentos fallidos y permisos por rol.
@@ -89,8 +108,8 @@ Estas son cuentas de demostración de la aplicación. Escríbelas como aparecen 
 - com.indea.util: ConexionBD, SeguridadUtil, Sesion y DatosIniciales.
 - com.indea.excepcion: excepciones propias.
 
-## Release final
-Nuevos módulos: inventario, compras, ventas, empleados, publicaciones, historial y reportes. Ver docs/ENTREGA_FINAL.md. Alternativa a Eclipse: instalar Maven y ejecutar `mvn compile exec:java` desde esta carpeta. En Eclipse se debe agregar Connector/J manualmente; no se incluye el JAR externo. El SQL incluye cuentas de demostración. No ejecutar sobre una base existente sin respaldo. Compilación y prueba de seguridad básica verificadas; integración MySQL y capturas pendientes.
+## Funcionalidad actual
+Módulos: inventario, compras, ventas, empleados, publicaciones, historial y reportes. Ver docs/ENTREGA_FINAL.md. Alternativa a Eclipse: instalar Maven y ejecutar `mvn compile exec:java` desde esta carpeta. En Eclipse se debe agregar Connector/J manualmente; no se incluye el JAR externo. El SQL incluye cuentas de demostración. No ejecutar sobre una base existente sin respaldo. Compilación y prueba de seguridad básica verificadas; integración MySQL y capturas pendientes.
 
 ## Documentación y rúbrica
 
@@ -111,3 +130,6 @@ Queda para una entrega posterior configurar los perfiles de MySQL para técnico,
 - [Sprint 6 · Pruebas](docs/sprints/06-pruebas.md)
 - [Sprint 7 · Manuales y backlog final](docs/ENTREGA_FINAL.md)
 - [Sprint 8 · Entrega final y rúbrica](docs/RUBRICA_Y_EVIDENCIAS.md)
+
+## Historial y reportes
+El historial operativo presenta compras, ventas y reparaciones al abrirse; permite consultar por cliente o volver a todas las operaciones. Reportes muestra los ingresos del mes y admite elegir otros periodos, con PDF de ganancias basado en el periodo visible. Consulta [Historial y Reportes](docs/MEJORAS_HISTORIAL_REPORTES.md).

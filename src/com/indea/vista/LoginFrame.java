@@ -21,6 +21,7 @@ public class LoginFrame extends JFrame {
     private final JPasswordField txtClave = new JPasswordField(18);
 
     public LoginFrame() {
+        setIconImage(Ui.LOGO.getImage());
         setTitle("INDEA - Iniciar sesión");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
@@ -32,8 +33,10 @@ public class LoginFrame extends JFrame {
         Ui.fila(form, 1, "Contraseña:", txtClave);
         add(form, BorderLayout.CENTER);
 
-        JButton btnIngresar = new JButton("Ingresar");
-        JButton btnConsulta = new JButton("Consultar estado de mi equipo");
+        JButton btnIngresar = new BotonIndea("Ingresar", true);
+        btnIngresar.setBackground(Ui.ACCION);
+        btnIngresar.setForeground(java.awt.Color.WHITE);
+        JButton btnConsulta = new BotonIndea("Consultar estado de mi equipo");
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.CENTER));
         botones.setBorder(BorderFactory.createEmptyBorder(0, 8, 12, 8));
         botones.add(btnIngresar);

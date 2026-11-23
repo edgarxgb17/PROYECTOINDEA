@@ -25,6 +25,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.JToggleButton;
 import javax.swing.JPanel;
 import javax.swing.JTable;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
@@ -38,6 +39,8 @@ import java.awt.Font;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,20 +64,22 @@ public class ReparacionesFrame extends JPanel {
     private final DefaultTableModel modelo = Ui.modeloTabla("Folio", "Cliente", "Equipo", "Estado", "Ingreso");
     private final TablaFolios tabla = new TablaFolios(modelo);
     private final List<Reparacion> mostradas = new ArrayList<>();
+    private final JLabel lblResultados = new JLabel("Cargando reparaciones...");
     private final JTextField txtFolioCopiable = new JTextField(15);
-    private final JButton btnCopiarFolio = new JButton("Copiar folio");
+    private final JButton btnCopiarFolio = new BotonIndea("Copiar folio");
     private final JLabel lblClienteFolio = new JLabel("Selecciona una reparación de la tabla");
     private final JComboBox<EstadoReparacion> cmbEstado = new JComboBox<>(EstadoReparacion.values());
     private final JTextField txtCosto = new JTextField(10);
     private final JCheckBox chkPagado = new JCheckBox("Servicio pagado");
     private final JTextArea txtDiagnostico = new JTextArea(4, 20);
     private final JTextArea txtHistorial = new JTextArea(6, 22);
-    private final JButton btnGuardarCambios = new JButton("Guardar cambios");
-    private final JButton btnRefacciones = new JButton("Refacciones del folio");
+    private final JButton btnGuardarCambios = new BotonIndea("Guardar cambios", true);
+    private final JButton btnRefacciones = new BotonIndea("Refacciones del folio");
     private final RefaccionService servicioRefacciones = new RefaccionService();
     private boolean folioEntregado;
     private String folioSeleccionado;
     private boolean busquedaAplicada;
+    private boolean primeraVista = true;
 
     public ReparacionesFrame() {
         
@@ -97,10 +102,10 @@ public class ReparacionesFrame extends JPanel {
     private JPanel construirNavegacion() {
         CardLayout cartas = new CardLayout();
         JPanel contenido = new JPanel(cartas);
-        contenido.add(construirNueva(),"nueva");
+        contenido.add(Ui.desplazamientoVertical(construirNueva()),"nueva");
         contenido.add(construirSeguimiento(),"seguimiento");
         JPanel barra = new JPanel(new FlowLayout(FlowLayout.LEFT,8,7));
-        barra.setBackground(new Color(239,244,250));
+        barra.setBackground(Ui.FONDO);
         ButtonGroup grupo = new ButtonGroup();
         JToggleButton nueva = new JToggleButton("Nueva reparación",true);
         JToggleButton seguimiento = new JToggleButton("Seguimiento");
@@ -128,8 +133,27 @@ public class ReparacionesFrame extends JPanel {
         String anterior = folioSeleccionado;
         refrescarTabla();
         if (anterior==null) return;
-        for (int i=0;i<mostradas.size();i++) {
-            if (anterior.equals(mostradas.get(i).getFolio())) { tabla.seleccionarFolio(i); break; }
+        seleccionarFolioEnTabla(anterior);
+    }
+
+    void refrescarAlMostrar() {
+        // El constructor ya consulto la base. Evitar dos consultas seguidas al abrir.
+        if (primeraVista) {
+            primeraVista = false;
+        } else {
+            refrescarSinPerderFolio();
+        }
+    }
+
+    private void seleccionarFolioEnTabla(String folio) {
+        if (folio == null) return;
+        for (int i = 0; i < mostradas.size(); i++) {
+            if (folio.equals(mostradas.get(i).getFolio())) {
+                int filaVista = tabla.convertRowIndexToView(i);
+                tabla.seleccionarFolio(filaVista);
+                tabla.scrollRectToVisible(tabla.getCellRect(filaVista, 0, true));
+                return;
+            }
         }
     }
 
@@ -145,8 +169,8 @@ public class ReparacionesFrame extends JPanel {
         form.setBorder(BorderFactory.createTitledBorder("Datos del equipo recibido"));
 
         JPanel filaCliente = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        JButton btnBuscarCliente = new JButton("Buscar");
-        JButton btnNuevoCliente = new JButton("Registrar cliente nuevo");
+        JButton btnBuscarCliente = new BotonIndea("Buscar");
+        JButton btnNuevoCliente = new BotonIndea("Registrar cliente nuevo");
         filaCliente.add(txtTelefonoCliente);
         filaCliente.add(btnBuscarCliente);
         filaCliente.add(btnNuevoCliente);
@@ -163,8 +187,8 @@ public class ReparacionesFrame extends JPanel {
         Ui.fila(form, 5, "Falla reportada *", new JScrollPane(txtFalla));
         Ui.fila(form, 6, "Técnico asignado *", cmbTecnico);
 
-        JButton btnRegistrar = new JButton("Registrar y generar folio");
-        JButton btnLimpiar = new JButton("Limpiar");
+        JButton btnRegistrar = new BotonIndea("Registrar y generar folio", true);
+        JButton btnLimpiar = new BotonIndea("Limpiar");
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.LEFT));
         botones.add(btnRegistrar);
         botones.add(btnLimpiar);
@@ -183,23 +207,53 @@ public class ReparacionesFrame extends JPanel {
     }
 
     private JPanel construirSeguimiento() {
-        JPanel busqueda = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton btnBuscar = new JButton("Buscar");
-        JButton btnTodas = new JButton("Ver todas");
-        busqueda.add(new JLabel("Folio, cliente o teléfono:"));
-        busqueda.add(txtBuscar);
-        busqueda.add(btnBuscar);
-        busqueda.add(btnTodas);
-        JButton btnPdf = new JButton("PDF de reparaciones");
+        JButton btnBuscar = new BotonIndea("Buscar");
+        JButton btnTodas = new BotonIndea("Ver todas");
+        JButton btnPdf = new BotonIndea("PDF de reparaciones");
         btnPdf.addActionListener(e -> ExportarPdf.guardar(this,"INDEA-reparaciones",
                 () -> ReportesPdfService.reparaciones(List.copyOf(mostradas),busquedaAplicada)));
-        busqueda.add(btnPdf);
+
+        JPanel filtro = new JPanel(new FlowLayout(FlowLayout.LEFT, 7, 2));
+        filtro.add(new JLabel("Folio, cliente o teléfono:"));
+        filtro.add(txtBuscar);
+        JPanel accionesBusqueda = new JPanel(new FlowLayout(FlowLayout.LEFT, 7, 2));
+        accionesBusqueda.add(btnBuscar);
+        accionesBusqueda.add(btnTodas);
+        accionesBusqueda.add(btnPdf);
+        JPanel busqueda = new JPanel(new BorderLayout(8, 0));
+        busqueda.add(filtro, BorderLayout.WEST);
+        busqueda.add(accionesBusqueda, BorderLayout.CENTER);
+        // En pantallas estrechas, los botones pasan a una segunda fila,
+        // en vez de desaparecer por debajo del siguiente control.
+        busqueda.addComponentListener(new ComponentAdapter() {
+            private boolean dosFilas;
+            @Override public void componentResized(ComponentEvent e) {
+                boolean estrecho = busqueda.getWidth() < 790;
+                if (estrecho != dosFilas) {
+                    dosFilas = estrecho;
+                    busqueda.removeAll();
+                    busqueda.setLayout(dosFilas ? new GridLayout(2, 1, 0, 2)
+                            : new BorderLayout(8, 0));
+                    busqueda.add(filtro, dosFilas ? null : BorderLayout.WEST);
+                    busqueda.add(accionesBusqueda, dosFilas ? null : BorderLayout.CENTER);
+                    busqueda.revalidate();
+                    busqueda.repaint();
+                }
+            }
+        });
 
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tabla.setFillsViewportHeight(true);
-        tabla.setSelectionBackground(new Color(217,232,250));
-        tabla.setSelectionForeground(new Color(23,41,66));
-        tabla.setRowHeight(Math.max(22,tabla.getRowHeight()));
+        tabla.setSelectionBackground(Ui.SELECCION);
+        tabla.setSelectionForeground(Ui.TEXTO);
+        tabla.setRowHeight(Math.max(30,tabla.getRowHeight()));
+        tabla.setAutoCreateRowSorter(true);
+        tabla.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        int[] anchos = {170, 235, 265, 160, 165};
+        for (int i = 0; i < anchos.length; i++) {
+            tabla.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
+        }
+        tabla.getTableHeader().setReorderingAllowed(false);
 
         txtDiagnostico.setLineWrap(true);
         txtDiagnostico.setWrapStyleWord(true);
@@ -217,9 +271,9 @@ public class ReparacionesFrame extends JPanel {
         txtFolioCopiable.getAccessibleContext().setAccessibleName("Folio seleccionado");
         JPanel casilla = new JPanel(new FlowLayout(FlowLayout.LEFT,8,5));
         casilla.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(185,208,233),1,true),
+                BorderFactory.createLineBorder(Ui.LINEA,1,true),
                 BorderFactory.createEmptyBorder(1,6,1,6)));
-        casilla.setBackground(new Color(237,245,253));
+        casilla.setBackground(new Color(0xE7F0FC));
         JLabel etiqueta = new JLabel("Folio seleccionado");
         etiqueta.setForeground(Ui.AZUL);
         etiqueta.setFont(etiqueta.getFont().deriveFont(Font.BOLD));
@@ -227,7 +281,6 @@ public class ReparacionesFrame extends JPanel {
         casilla.add(etiqueta);
         casilla.add(txtFolioCopiable);
         casilla.add(btnCopiarFolio);
-        casilla.add(new JLabel("Haz clic en una celda de la columna Folio."));
 
         Ui.fila(izquierda,0,"Cliente",lblClienteFolio);
         Ui.fila(izquierda,1,"Estado",cmbEstado);
@@ -242,6 +295,18 @@ public class ReparacionesFrame extends JPanel {
         JPanel detalle = new JPanel(new GridLayout(1, 2, 8, 0));
         detalle.add(izquierda);
         detalle.add(derecha);
+        detalle.addComponentListener(new ComponentAdapter() {
+            private boolean vertical;
+            @Override public void componentResized(ComponentEvent e) {
+                boolean colocarUnoDebajoDeOtro = detalle.getWidth() < 830;
+                if (colocarUnoDebajoDeOtro != vertical) {
+                    vertical = colocarUnoDebajoDeOtro;
+                    detalle.setLayout(vertical ? new GridLayout(2, 1, 0, 9)
+                            : new GridLayout(1, 2, 8, 0));
+                    detalle.revalidate();
+                }
+            }
+        });
 
         JPanel sur = new JPanel(new BorderLayout());
         sur.add(detalle, BorderLayout.CENTER);
@@ -256,8 +321,23 @@ public class ReparacionesFrame extends JPanel {
         cabecera.add(busqueda,BorderLayout.NORTH);
         cabecera.add(casilla,BorderLayout.CENTER);
         panel.add(cabecera,BorderLayout.NORTH);
-        panel.add(new JScrollPane(tabla), BorderLayout.CENTER);
-        panel.add(sur, BorderLayout.SOUTH);
+        // El formulario inferior antes se quedaba con toda la altura disponible,
+        // ocultando las filas de la tabla en ventanas normales o pequenas.
+        // Ahora el listado tiene altura propia y el conjunto puede desplazarse.
+        JScrollPane listaDesplazable = new JScrollPane(tabla,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        listaDesplazable.setPreferredSize(new Dimension(900, 250));
+        Ui.ajustarDesplazamiento(listaDesplazable);
+        JPanel listado = new JPanel(new BorderLayout(0, 5));
+        lblResultados.setFont(lblResultados.getFont().deriveFont(Font.BOLD, 13f));
+        listado.add(lblResultados, BorderLayout.NORTH);
+        listado.add(listaDesplazable, BorderLayout.CENTER);
+
+        JPanel contenidoDesplazable = new JPanel(new BorderLayout(0, 12));
+        contenidoDesplazable.add(listado, BorderLayout.NORTH);
+        contenidoDesplazable.add(sur, BorderLayout.CENTER);
+        panel.add(Ui.desplazamientoVertical(contenidoDesplazable), BorderLayout.CENTER);
 
         btnBuscar.addActionListener(e -> refrescarTabla());
         txtBuscar.addActionListener(e -> refrescarTabla());
@@ -399,6 +479,13 @@ public class ReparacionesFrame extends JPanel {
                 modelo.addRow(new Object[] {r.getFolio(), r.getCliente().getNombre(), r.getEquipoDescripcion(),
                         r.getEstado().getEtiqueta(), r.getFechaIngreso().format(Ui.FECHA_HORA)});
             }
+            if (lista.isEmpty()) {
+                lblResultados.setText(busquedaAplicada
+                        ? "No hay reparaciones con ese folio, cliente o teléfono."
+                        : "Todavía no hay reparaciones registradas. Usa Nueva reparación para crear una.");
+            } else {
+                lblResultados.setText(lista.size() + " reparacion(es)  ·  Desplázate por la tabla o haz clic en Folio para ver el detalle.");
+            }
         } catch (RuntimeException ex) {
             Ui.manejar(this, ex);
         }
@@ -406,6 +493,7 @@ public class ReparacionesFrame extends JPanel {
 
     private void cargarSeleccion() {
         int fila = tabla.getSelectedRow();
+        if (fila >= 0) fila = tabla.convertRowIndexToModel(fila);
         folioSeleccionado = null;
         btnRefacciones.setEnabled(false);
         txtFolioCopiable.setText("");
@@ -462,7 +550,7 @@ public class ReparacionesFrame extends JPanel {
                     detalle.addRow(new Object[] {pieza.nombre(), pieza.cantidad(), pieza.costoUnitario(),
                             pieza.costoUnitario().multiply(java.math.BigDecimal.valueOf(pieza.cantidad()))});
                 }
-                JTable piezas = new JTable(detalle);
+                JTable piezas = new TablaIndea(detalle);
                 piezas.setFillsViewportHeight(true);
                 JScrollPane conteo = new JScrollPane(piezas);
                 conteo.setPreferredSize(new Dimension(525, 180));
@@ -510,12 +598,9 @@ public class ReparacionesFrame extends JPanel {
             controlador.actualizar(folioSeleccionado, (EstadoReparacion) cmbEstado.getSelectedItem(),
                     txtDiagnostico.getText(), txtCosto.getText(), chkPagado.isSelected());
             Ui.info(this, "Reparación " + folioSeleccionado + " actualizada.");
-            int fila = tabla.getSelectedRow();
+            String folio = folioSeleccionado;
             refrescarTabla();
-            if (fila >= 0 && fila < tabla.getRowCount()) {
-                tabla.seleccionarFolio(fila);
-            }
-            cargarSeleccion();
+            seleccionarFolioEnTabla(folio);
         } catch (RuntimeException ex) {
             Ui.manejar(this, ex);
         }

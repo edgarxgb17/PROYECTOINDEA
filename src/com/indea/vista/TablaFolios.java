@@ -5,7 +5,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.table.TableModel;
 
 /** En Seguimiento solo la columna de folios recibe selección. */
-final class TablaFolios extends JTable {
+final class TablaFolios extends TablaIndea {
     TablaFolios(TableModel datos) {
         super(datos);
         setCellSelectionEnabled(true);

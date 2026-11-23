@@ -13,9 +13,9 @@ final class ProveedoresPanel extends JPanel {
     private final ProveedorService servicio = new ProveedorService();
     private final DefaultTableModel fichas = Ui.modeloTabla("Nombre comercial","Contacto","Teléfono","Correo","Dirección");
     private final DefaultTableModel compras = Ui.modeloTabla("Fecha","Equipo","Unidades","Costo unitario","Total");
-    private final JTable tabla = new JTable(fichas);
+    private final JTable tabla = new TablaIndea(fichas);
     private final JLabel lblHistorial = new JLabel("Selecciona un proveedor para consultar sus compras.");
-    private final JButton editar = new JButton("Editar proveedor");
+    private final JButton editar = new BotonIndea("Editar proveedor");
     private List<Proveedor> lista = List.of();
 
     ProveedoresPanel() {
@@ -24,11 +24,11 @@ final class ProveedoresPanel extends JPanel {
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tabla.setAutoCreateRowSorter(true);
         tabla.setFillsViewportHeight(true);
-        JTable historial = new JTable(compras);
+        JTable historial = new TablaIndea(compras);
         historial.setFillsViewportHeight(true);
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton nuevo = new JButton("Nuevo proveedor"), actualizar = new JButton("Actualizar");
+        JButton nuevo = new BotonIndea("Nuevo proveedor", true), actualizar = new BotonIndea("Actualizar");
         editar.setEnabled(false);
         acciones.add(nuevo); acciones.add(editar); acciones.add(actualizar);
         JPanel inferior = new JPanel(new BorderLayout(0,5));

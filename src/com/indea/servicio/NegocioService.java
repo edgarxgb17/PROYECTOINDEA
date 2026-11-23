@@ -21,7 +21,24 @@ public class NegocioService {
  case "inventario": permiso(Rol.values());sql="SELECT id_equipo,tipo,marca,modelo,condicion,precio_venta,estado FROM equipos WHERE (?='' OR estado=?) ORDER BY id_equipo DESC";break;
  case "empleados": permiso(Rol.ADMINISTRADOR);sql="SELECT e.id_empleado,e.nombre,e.telefono,e.correo,e.rol,e.activo,u.nombre_usuario FROM empleados e LEFT JOIN usuarios u USING(id_empleado)";break;
  case "publicaciones": permiso(Rol.ADMINISTRADOR,Rol.MARKETING,Rol.VENDEDOR);sql="SELECT id_publicacion,id_equipo,titulo,descripcion,tipo,activa FROM publicaciones";break;
- case "historial": permiso(Rol.ADMINISTRADOR,Rol.TECNICO,Rol.VENDEDOR);sql="SELECT 'Reparación',folio,fecha_ingreso,costo_servicio,estado FROM reparaciones WHERE id_cliente=? UNION ALL SELECT 'Compra',id_compra,fecha_compra,precio_compra,origen FROM compras WHERE id_cliente=? UNION ALL SELECT 'Venta',id_venta,fecha_venta,precio_venta,'VENDIDO' FROM ventas WHERE id_cliente=? ORDER BY 3 DESC";break;
+ case "historial":
+  permiso(Rol.ADMINISTRADOR,Rol.TECNICO,Rol.VENDEDOR);
+  // Un cliente 0 indica todos los movimientos. Conservar también compras a proveedores.
+  sql="SELECT 'Reparación' AS operacion, r.folio AS referencia, cl.nombre AS cliente_origen, "
+      +"r.fecha_ingreso AS fecha, r.costo_servicio AS importe, r.estado AS estado "
+      +"FROM reparaciones r JOIN clientes cl ON cl.id_cliente=r.id_cliente "
+      +"WHERE (?=0 OR r.id_cliente=?) "
+      +"UNION ALL "
+      +"SELECT 'Compra', CONCAT('COM-',c.id_compra), COALESCE(cl.nombre,c.proveedor,'Proveedor'), "
+      +"c.fecha_compra, c.precio_compra, c.origen "
+      +"FROM compras c LEFT JOIN clientes cl ON cl.id_cliente=c.id_cliente "
+      +"WHERE (?=0 OR c.id_cliente=?) "
+      +"UNION ALL "
+      +"SELECT 'Venta', CONCAT('VEN-',v.id_venta), cl.nombre, v.fecha_venta, v.precio_venta, 'VENDIDO' "
+      +"FROM ventas v JOIN clientes cl ON cl.id_cliente=v.id_cliente "
+      +"WHERE (?=0 OR v.id_cliente=?) "
+      +"ORDER BY fecha DESC";
+  break;
  case "reportes": permiso(Rol.ADMINISTRADOR);sql="SELECT 'Reparaciones',COALESCE(SUM(costo_servicio),0) FROM reparaciones WHERE pagado=1 AND fecha_pago>=? AND fecha_pago<DATE_ADD(?,INTERVAL 1 DAY) UNION ALL SELECT 'Ventas',COALESCE(SUM(precio_venta),0) FROM ventas WHERE fecha_venta>=? AND fecha_venta<DATE_ADD(?,INTERVAL 1 DAY)";break;
  case "panel": permiso(Rol.ADMINISTRADOR);sql="SELECT (SELECT COUNT(*) FROM reparaciones WHERE estado<>'ENTREGADO'),(SELECT COUNT(*) FROM equipos WHERE estado='DISPONIBLE'),(SELECT COUNT(*) FROM ventas WHERE fecha_venta>=DATE_FORMAT(CURDATE(),'%Y-%m-01')),(SELECT COALESCE(SUM(precio_venta),0) FROM ventas)+(SELECT COALESCE(SUM(costo_servicio),0) FROM reparaciones WHERE pagado=1)";break;
  default:throw new IllegalArgumentException("Consulta desconocida");}
